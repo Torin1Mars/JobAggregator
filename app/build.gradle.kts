@@ -25,13 +25,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
-    kotlinOptions {
+
+    /*kotlinOptions {
         jvmTarget = "11"
-    }
-    buildFeatures {
+    }*/
+
+    buildFeatures {gradle
         compose = true
     }
 }
@@ -52,4 +54,12 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    //########################## Project dependencies ##########################
+
+    // Ksoup parser
+    val ksoup : String = "0.2.6"
+    implementation("com.fleeksoft.ksoup:ksoup:0.2.1")
+    implementation("com.fleeksoft.ksoup:ksoup-network:0.2.1")
+
 }
