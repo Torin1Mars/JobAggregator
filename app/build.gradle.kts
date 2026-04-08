@@ -58,8 +58,13 @@ dependencies {
     //########################## Project dependencies ##########################
 
     // Ksoup parser
-    val ksoup : String = "0.2.6"
-    implementation("com.fleeksoft.ksoup:ksoup:0.2.1")
-    implementation("com.fleeksoft.ksoup:ksoup-network:0.2.1")
+    val ksoupVer : String = "0.2.1"
+    implementation("com.fleeksoft.ksoup:ksoup:$ksoupVer")
+    implementation("com.fleeksoft.ksoup:ksoup-network:$ksoupVer")
+
+    //Retrofit
+    val retrofitVer : String = "3.0.0"
+    implementation ("com.squareup.retrofit2:retrofit:$retrofitVer")
+    implementation ("com.squareup.retrofit2:converter-scalars:$retrofitVer")
 
 }

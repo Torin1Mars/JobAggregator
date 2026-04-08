@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.example.jobaggregator.retrofit.RetrofitObj
 import com.example.jobaggregator.ui.theme.JobAggregatorTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,10 +23,25 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            val vacancy  = parsingExample()
+        val workUaRetrofit: RetrofitObj = RetrofitObj
 
-            vacancy.forEach { it -> Log.d("MyTag", it.attr("name")) }
+        CoroutineScope(Dispatchers.IO).launch {
+
+            try {
+                val currentResponse = workUaRetrofit.api.getPageAsString()
+
+                if (!currentResponse.isEmpty()) {
+                    Log.d("MyTag", currentResponse)
+
+                } else {
+                    //Do nothing
+                }
+                val temp = currentResponse
+
+            } catch (e: Exception) {
+                Log.d("Error", e.message.toString())
+            }
+
         }
     }
 }
