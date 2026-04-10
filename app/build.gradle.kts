@@ -2,6 +2,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+
+    id ("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
 }
 
 android {
@@ -67,4 +69,7 @@ dependencies {
     implementation ("com.squareup.retrofit2:retrofit:$retrofitVer")
     implementation ("com.squareup.retrofit2:converter-scalars:$retrofitVer")
 
+    //Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 }

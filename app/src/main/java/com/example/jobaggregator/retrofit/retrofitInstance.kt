@@ -8,6 +8,10 @@ object RetrofitObj {
 
     private val baseUrl = workUaUrl
 
+    public fun getBaseUrl (): String{
+        return baseUrl
+    }
+
     private val retrofitInstance: Retrofit by lazy {
         Retrofit.Builder().baseUrl(baseUrl)
             .addConverterFactory(ScalarsConverterFactory.create())

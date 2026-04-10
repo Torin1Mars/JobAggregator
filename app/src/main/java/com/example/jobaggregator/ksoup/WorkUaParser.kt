@@ -7,17 +7,19 @@ import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.retrofit.RetrofitObj
 import com.example.jobaggregator.supportingData.dateFormat
 import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Date
+import kotlin.String
 
 class WorkUaParser() {
 
-    val retrofitInstance: RetrofitObj = RetrofitObj
+    private val retrofitInstance: RetrofitObj = RetrofitObj
+    private val jobQueryTemplate  = "%s/jobs/%s"
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun startTesting(){
@@ -47,26 +49,25 @@ class WorkUaParser() {
 
         val jobsCards = mutableListOf<JobCard>()
 
-        jobsIds.forEach {id->
-
-            CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Main).launch {
+            jobsIds.forEach { id ->
                 try {
                     val currentResponse = retrofitInstance.api.getOneJobData(id)
-                    if (currentResponse.isSuccessful){
-                        jobsCards.add(parseJob(currentResponse.body()!!))
-                    }else{
+                    if (currentResponse.isSuccessful) {
+                        val currentJobUrl = jobQueryTemplate.format(retrofitInstance.getBaseUrl(), id)
+
+                        val newJob = parseJob(currentResponse.body()!!, Url(urlString = currentJobUrl))
+                        jobsCards.add(newJob)
+
+                    } else {
                         //Do nothing
                     }
-                }catch (e: Exception){
-                    e.message?.let { Log.d("MyTag", it)}
+                } catch (e: Exception) {
+                    e.message?.let { Log.d("MyTag", it) }
                 }
-
-
                 Log.d("MyTag", jobsCards.toString())
             }
         }
-
-
 
         return jobsCards
     }
@@ -87,17 +88,32 @@ class WorkUaParser() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun parseJob(jobHtmlPage: String): JobCard{
+    fun parseJob(jobHtmlPage: String, jobUrl: Url): JobCard{
 
         val document = Ksoup.parse(jobHtmlPage)
 
         val element = document.selectFirst("time.text-default-7")
-
         val rawDate = element!!.attr("datetime")
-
         val formatter = DateTimeFormatter.ofPattern(dateFormat)
         val date = LocalDate.parse(rawDate.substringBefore(" "), formatter)
 
-        return JobCard(publicationDate = date)
+        val jobTitle: String = document.selectFirst("#h1-name")?.text() ?: "Empty"
+        val jobDescription: String? = document.selectFirst("#job-description")?.text()
+
+        val blockLocationCompanySalary = document.selectFirst("ul.sm\\:mt-xl")
+
+        val jobLocation  = blockLocationCompanySalary?.selectFirst("[title=Адреса роботи]")?.parent()?.text()?.substringBefore(".")
+        val jobCompany: String? = blockLocationCompanySalary?.selectFirst("[title=Дані про компанію]")?.parent()?.selectFirst(".inline")?.text()
+        val jobSalary: String? = blockLocationCompanySalary?.selectFirst("[title=Зарплата]")?.nextElementSibling()?.text()
+
+        val card  = JobCard(publicationDate = date,
+            jobTitle = jobTitle,
+            jobDescription = jobDescription,
+            jobLocation = jobLocation,
+            jobCompany = jobCompany,
+            jobSalary = jobSalary,
+            jobUrl = jobUrl)
+
+        return card
     }
 }
