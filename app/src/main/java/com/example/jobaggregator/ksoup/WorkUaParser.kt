@@ -3,12 +3,11 @@ package com.example.jobaggregator.ksoup
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.ui.unit.times
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.retrofit.RetrofitObj
 import com.example.jobaggregator.supportingData.dateFormat
 import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
-import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,16 +20,41 @@ class WorkUaParser() {
     private val retrofitInstance: RetrofitObj = RetrofitObj
     private val jobQueryTemplate  = "%s/jobs/%s"
 
+    private val jobsCardsList = mutableListOf<JobCard>()
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun startTesting(){
 
+        val userQuery: String = "jobs-cherkasy"
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val currentResponse = retrofitInstance.api.getJobsQueryAsString("jobs-cherkasy-python")
+                val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
+                val htmlPageInString = currentResponse.body()!!
 
                 if (currentResponse.isSuccessful) {
-                    val jobsList = getJobsIdList(currentResponse.body()!!)
-                    getJobsById(jobsList)
+
+
+                    val howMuchPages = checkIfSeveralPages(htmlPageInString)
+
+                    if (howMuchPages > 1){
+                        ( 1 .. howMuchPages).forEach { page->
+
+                            //TODO pack it in try catch block :
+                            val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
+                            val localHtmlPageInString = localResponse.body()!!
+
+                            val jobsList = getJobsIdList(htmlPageInString)
+                        }
+
+
+
+                    }else{
+                        val jobsList = getJobsIdList(htmlPageInString)
+                        val foundedJobs = getJobsById(jobsList)
+
+                        jobsCardsList += foundedJobs
+                    }
 
                 } else {
                     //Do nothing
@@ -40,39 +64,12 @@ class WorkUaParser() {
             } catch (e: Exception) {
                 Log.d("MyTag", e.message.toString())
             }
+
+            Log.d("MyTag", jobsCardsList.size.toString())
         }
     }
 
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    public fun getJobsById(jobsIds: MutableList<String>): MutableList<JobCard>{
-
-        val jobsCards = mutableListOf<JobCard>()
-
-        CoroutineScope(Dispatchers.Main).launch {
-            jobsIds.forEach { id ->
-                try {
-                    val currentResponse = retrofitInstance.api.getOneJobData(id)
-                    if (currentResponse.isSuccessful) {
-                        val currentJobUrl = jobQueryTemplate.format(retrofitInstance.getBaseUrl(), id)
-
-                        val newJob = parseJob(currentResponse.body()!!, Url(urlString = currentJobUrl))
-                        jobsCards.add(newJob)
-
-                    } else {
-                        //Do nothing
-                    }
-                } catch (e: Exception) {
-                    e.message?.let { Log.d("MyTag", it) }
-                }
-                Log.d("MyTag", jobsCards.toString())
-            }
-        }
-
-        return jobsCards
-    }
-
-    public  fun getJobsIdList(htmlPage: String): MutableList<String>{
+    suspend fun getJobsIdList(htmlPage: String): MutableList<String>{
         val jobsIds = mutableListOf<String>()
 
         val document = Ksoup.parse(htmlPage)
@@ -81,21 +78,63 @@ class WorkUaParser() {
         val selection = jobsElement!!.select("#pjax-jobs-list > a")
 
         selection.forEach {
-            it->jobsIds.add(it.attr("name"))
+                it->jobsIds.add(it.attr("name"))
         }
 
         return jobsIds
     }
 
+    private fun checkIfSeveralPages(htmlPage: String): Int{
+        var pagesCount = 0
+
+        val document = Ksoup.parse(htmlPage)
+
+        val navBarElement  = document.selectFirst("ul.pagination")
+        val lastPageNumber  = navBarElement?.selectFirst("li:nth-last-child(2) a")?.text()
+
+        if (lastPageNumber.isNullOrEmpty()){
+            pagesCount = 1
+        }else{
+            pagesCount = lastPageNumber.toInt()
+        }
+
+        return pagesCount
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
-    fun parseJob(jobHtmlPage: String, jobUrl: Url): JobCard{
+    suspend fun getJobsById(jobsIds: MutableList<String>): MutableList<JobCard>{
+
+        val jobsList = mutableListOf<JobCard>()
+
+        jobsIds.forEach { id ->
+            try {
+                val currentResponse = retrofitInstance.api.getOneJobData(id)
+                if (currentResponse.isSuccessful) {
+                    val currentJobUrl = jobQueryTemplate.format(retrofitInstance.getBaseUrl(), id)
+
+                    val newJob = parseJob(currentResponse.body()!!, jobUrl = currentJobUrl)
+                    jobsList.add(newJob)
+
+                } else {
+                //Do nothing
+                }
+            } catch (e: Exception) {
+                e.message?.let { Log.d("MyTag", it) }
+            }
+        }
+
+        return jobsList
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun parseJob(jobHtmlPage: String, jobUrl: String): JobCard{
 
         val document = Ksoup.parse(jobHtmlPage)
 
         val element = document.selectFirst("time.text-default-7")
-        val rawDate = element!!.attr("datetime")
-        val formatter = DateTimeFormatter.ofPattern(dateFormat)
-        val date = LocalDate.parse(rawDate.substringBefore(" "), formatter)
+        val rawDate = element!!.attr("datetime").substringBefore(" ")
+        val formater = DateTimeFormatter.ofPattern(dateFormat)
+        val date = LocalDate.parse(rawDate).format(formater).toString()
 
         val jobTitle: String = document.selectFirst("#h1-name")?.text() ?: "Empty"
         val jobDescription: String? = document.selectFirst("#job-description")?.text()
