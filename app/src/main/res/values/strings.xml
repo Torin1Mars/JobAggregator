@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">JobAggregator</string>
+    <string name="app_name">"JobAggregator"</string>
+    <string name="errorDataLoading">"Couldn't load data"</string>
 </resources>

@@ -20,9 +20,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val parser = WorkUaParser()
+        val parser = WorkUaParser(context = this)
 
-        parser.startTesting()
+        parser.parseByQuery("jobs-smila")
 
         setContent {
             JobAggregatorTheme {

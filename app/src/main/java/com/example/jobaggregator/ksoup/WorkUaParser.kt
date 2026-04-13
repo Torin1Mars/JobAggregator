@@ -1,9 +1,11 @@
 package com.example.jobaggregator.ksoup
 
+import android.content.Context
+import com.example.jobaggregator.R
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.compose.ui.unit.times
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.retrofit.RetrofitObj
 import com.example.jobaggregator.supportingData.dateFormat
@@ -15,7 +17,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.String
 
-class WorkUaParser() {
+class WorkUaParser(context: Context) {
+
+    val appContext = context
 
     private val retrofitInstance: RetrofitObj = RetrofitObj
     private val jobQueryTemplate  = "%s/jobs/%s"
@@ -23,9 +27,9 @@ class WorkUaParser() {
     private val jobsCardsList = mutableListOf<JobCard>()
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun startTesting(){
+    fun parseByQuery(query : String){
 
-        val userQuery: String = "jobs-cherkasy"
+        val userQuery: String = query
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -34,38 +38,66 @@ class WorkUaParser() {
 
                 if (currentResponse.isSuccessful) {
 
-
                     val howMuchPages = checkIfSeveralPages(htmlPageInString)
 
                     if (howMuchPages > 1){
+
                         ( 1 .. howMuchPages).forEach { page->
 
-                            //TODO pack it in try catch block :
-                            val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
-                            val localHtmlPageInString = localResponse.body()!!
+                            try{
+                                val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
+                                val htmlPageInString2 = localResponse.body()!!
 
-                            val jobsList = getJobsIdList(htmlPageInString)
+                                val jobsList = getJobsIdList(htmlPageInString2)
+                                val foundedJobs = getJobsById(jobsList)
+
+                                jobsCardsList += foundedJobs
+                                Log.d("MyTag", "Page $page vacancies - ${foundedJobs.size}")
+
+
+                            }catch (e: Exception){
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                                }
+
+                                Log.d("MyTag", e.message.toString())
+                            }
                         }
 
-
+                        Log.d("MyTag", jobsCardsList.size.toString())
 
                     }else{
-                        val jobsList = getJobsIdList(htmlPageInString)
-                        val foundedJobs = getJobsById(jobsList)
 
-                        jobsCardsList += foundedJobs
+                        try {
+                            val jobsList = getJobsIdList(htmlPageInString)
+                            val foundedJobs = getJobsById(jobsList)
+
+                            jobsCardsList += foundedJobs
+
+                        }catch (e: Exception){
+                            CoroutineScope(Dispatchers.Main).launch {
+                                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                            }
+
+                            Log.d("MyTag", e.message.toString())
+                        }
                     }
 
                 } else {
                     //Do nothing
+                    CoroutineScope(Dispatchers.Main).launch {
+                        Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                    }
+                    Log.d("MyTag", "Couldn't load initial request")
                 }
-                val temp = currentResponse
 
             } catch (e: Exception) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                }
+
                 Log.d("MyTag", e.message.toString())
             }
-
-            Log.d("MyTag", jobsCardsList.size.toString())
         }
     }
 
@@ -74,7 +106,7 @@ class WorkUaParser() {
 
         val document = Ksoup.parse(htmlPage)
 
-        val jobsElement  = document.selectFirst("html body main#center.main-center.bg-gray div#pjax.container div.row div.col-md-8 div#pjax-jobs-list")
+        val jobsElement  = document.selectFirst("#pjax-jobs-list")
         val selection = jobsElement!!.select("#pjax-jobs-list > a")
 
         selection.forEach {
