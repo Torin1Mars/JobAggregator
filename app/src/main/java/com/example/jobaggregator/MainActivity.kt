@@ -2,18 +2,17 @@ package com.example.jobaggregator
 
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.ksoup.WorkUaParser
-import com.example.jobaggregator.retrofit.RetrofitObj
 import com.example.jobaggregator.ui.theme.JobAggregatorTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +24,9 @@ class MainActivity : ComponentActivity() {
         parser.parseByQuery("jobs-smila")
 
         setContent {
+
+            val vm : MainViewModel = hiltViewModel()
+
             JobAggregatorTheme {
                 // TODO
             }

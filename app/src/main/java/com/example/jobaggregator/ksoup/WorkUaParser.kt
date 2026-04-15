@@ -150,6 +150,7 @@ class WorkUaParser(context: Context) {
                 } else {
                 //Do nothing
                 }
+
             } catch (e: Exception) {
                 e.message?.let { Log.d("MyTag", it) }
             }
