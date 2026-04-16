@@ -14,17 +14,16 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val parser = WorkUaParser(context = this)
-
-        parser.parseByQuery("jobs-smila")
+        //val parser = WorkUaParser(context = this)
+        //parser.parseByQuery()
 
         setContent {
-
             val vm : MainViewModel = hiltViewModel()
 
             JobAggregatorTheme {

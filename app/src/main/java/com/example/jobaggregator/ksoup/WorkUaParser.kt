@@ -24,10 +24,10 @@ class WorkUaParser(context: Context) {
     private val retrofitInstance: RetrofitObj = RetrofitObj
     private val jobQueryTemplate  = "%s/jobs/%s"
 
-    private val jobsCardsList = mutableListOf<JobCard>()
+    val jobsCardsList = mutableListOf<JobCard>()
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun parseByQuery(query : String){
+    fun parseByQuery(query: String = "jobs-smila"){
 
         val userQuery: String = query
 
