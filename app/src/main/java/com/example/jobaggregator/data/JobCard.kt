@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class JobCard(
+    val jobIdOnWebsite: String,
     val publicationDate: String,
     val jobTitle: String,
     val jobDescription: String?,

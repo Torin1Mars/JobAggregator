@@ -1,4 +1,4 @@
-package com.example.jobaggregator.ksoup
+package com.example.jobaggregator.Parsers
 
 import android.content.Context
 import com.example.jobaggregator.R
@@ -144,7 +144,7 @@ class WorkUaParser(context: Context) {
                 if (currentResponse.isSuccessful) {
                     val currentJobUrl = jobQueryTemplate.format(retrofitInstance.getBaseUrl(), id)
 
-                    val newJob = parseJob(currentResponse.body()!!, jobUrl = currentJobUrl)
+                    val newJob = parseJob(currentResponse.body()!!, jobUrl = currentJobUrl, id)
                     jobsList.add(newJob)
 
                 } else {
@@ -160,7 +160,7 @@ class WorkUaParser(context: Context) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun parseJob(jobHtmlPage: String, jobUrl: String): JobCard{
+    fun parseJob(jobHtmlPage: String, jobUrl: String, thisJobId: String): JobCard{
 
         val document = Ksoup.parse(jobHtmlPage)
 
@@ -178,7 +178,9 @@ class WorkUaParser(context: Context) {
         val jobCompany: String? = blockLocationCompanySalary?.selectFirst("[title=Дані про компанію]")?.parent()?.selectFirst(".inline")?.text()
         val jobSalary: String? = blockLocationCompanySalary?.selectFirst("[title=Зарплата]")?.nextElementSibling()?.text()
 
-        val card  = JobCard(publicationDate = date,
+        val card  = JobCard(
+            jobIdOnWebsite = thisJobId ,
+            publicationDate = date,
             jobTitle = jobTitle,
             jobDescription = jobDescription,
             jobLocation = jobLocation,
