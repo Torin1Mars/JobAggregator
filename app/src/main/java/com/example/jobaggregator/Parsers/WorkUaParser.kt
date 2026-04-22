@@ -7,7 +7,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.jobaggregator.data.JobCard
-import com.example.jobaggregator.retrofit.RetrofitObj
+import com.example.jobaggregator.retrofit.RetrofitObj_WorkUA
 import com.example.jobaggregator.supportingData.dateFormat
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
@@ -21,58 +21,38 @@ class WorkUaParser(context: Context) {
 
     val appContext = context
 
-    private val retrofitInstance: RetrofitObj = RetrofitObj
+    private val retrofitInstance: RetrofitObj_WorkUA = RetrofitObj_WorkUA
     private val jobQueryTemplate  = "%s/jobs/%s"
 
     val jobsCardsList = mutableListOf<JobCard>()
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun parseByQuery(query: String = "jobs-smila"){
+    suspend fun parseByQuery(query: String = "jobs-smila"){
 
         val userQuery: String = query
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
-                val htmlPageInString = currentResponse.body()!!
+        try {
+            val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
+            val htmlPageInString = currentResponse.body()!!
 
-                if (currentResponse.isSuccessful) {
+            if (currentResponse.isSuccessful) {
 
-                    val howMuchPages = checkIfSeveralPages(htmlPageInString)
+                val howMuchPages = checkIfSeveralPages(htmlPageInString)
 
-                    if (howMuchPages > 1){
+                if (howMuchPages > 1){
 
-                        ( 1 .. howMuchPages).forEach { page->
+                    ( 1 .. howMuchPages).forEach { page->
 
-                            try{
-                                val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
-                                val htmlPageInString2 = localResponse.body()!!
+                        try{
+                            val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
+                            val htmlPageInString2 = localResponse.body()!!
 
-                                val jobsList = getJobsIdList(htmlPageInString2)
-                                val foundedJobs = getJobsById(jobsList)
-
-                                jobsCardsList += foundedJobs
-                                Log.d("MyTag", "Page $page vacancies - ${foundedJobs.size}")
-
-
-                            }catch (e: Exception){
-                                CoroutineScope(Dispatchers.Main).launch {
-                                    Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-                                }
-
-                                Log.d("MyTag", e.message.toString())
-                            }
-                        }
-
-                        Log.d("MyTag", jobsCardsList.size.toString())
-
-                    }else{
-
-                        try {
-                            val jobsList = getJobsIdList(htmlPageInString)
+                            val jobsList = getJobsIdList(htmlPageInString2)
                             val foundedJobs = getJobsById(jobsList)
 
                             jobsCardsList += foundedJobs
+                            Log.d("MyTag", "Page $page vacancies - ${foundedJobs.size}")
+
 
                         }catch (e: Exception){
                             CoroutineScope(Dispatchers.Main).launch {
@@ -83,25 +63,43 @@ class WorkUaParser(context: Context) {
                         }
                     }
 
-                } else {
-                    //Do nothing
-                    CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                    Log.d("MyTag", jobsCardsList.size.toString())
+
+                }else{
+
+                    try {
+                        val jobsList = getJobsIdList(htmlPageInString)
+                        val foundedJobs = getJobsById(jobsList)
+
+                        jobsCardsList += foundedJobs
+
+                    }catch (e: Exception){
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                        }
+
+                        Log.d("MyTag", e.message.toString())
                     }
-                    Log.d("MyTag", "Couldn't load initial request")
                 }
 
-            } catch (e: Exception) {
+            } else {
+                //Do nothing
                 CoroutineScope(Dispatchers.Main).launch {
                     Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
                 }
-
-                Log.d("MyTag", e.message.toString())
+                Log.d("MyTag", "Couldn't load initial request")
             }
+
+        } catch (e: Exception) {
+            CoroutineScope(Dispatchers.Main).launch {
+                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+            }
+
+            Log.d("MyTag", e.message.toString())
         }
     }
 
-    suspend fun getJobsIdList(htmlPage: String): MutableList<String>{
+    fun getJobsIdList(htmlPage: String): MutableList<String>{
         val jobsIds = mutableListOf<String>()
 
         val document = Ksoup.parse(htmlPage)

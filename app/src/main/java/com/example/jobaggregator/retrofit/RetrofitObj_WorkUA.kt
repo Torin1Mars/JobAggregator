@@ -4,7 +4,7 @@ import com.example.jobaggregator.supportingData.workUaUrl
 import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
 
-object RetrofitObj {
+object RetrofitObj_WorkUA {
 
     private val baseUrl = workUaUrl
 

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.jobaggregator.data.DatabaseJobCard
+import com.example.jobaggregator.data.JobCard
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -14,10 +15,10 @@ interface JobsDbDao {
     fun get_all_Jobs (): Flow<List<DatabaseJobCard>>
 
     //Adding
-    @Insert(DatabaseJobCard::class, onConflict = OnConflictStrategy.REPLACE )
+    @Insert
     fun addOneJobCard(newJobCard: DatabaseJobCard): Unit
 
-    @Insert(DatabaseJobCard::class, onConflict = OnConflictStrategy.REPLACE )
+    @Insert
     fun addJobCardList(newJobCard: MutableList<DatabaseJobCard>): Unit
 
     //Updating

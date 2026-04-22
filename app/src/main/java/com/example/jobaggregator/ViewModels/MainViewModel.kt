@@ -14,7 +14,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,25 +25,26 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
                                         private val jobsDatabase: JobsDbDao ): ViewModel() {
 
     init {
-        parser.parseByQuery()
-
         CoroutineScope(Dispatchers.Default).launch {
-            delay(5000)
+
+            parser.parseByQuery()
+
             Log.d("MyTag", "List size - ${parser.jobsCardsList.size}")
 
-            jobsDatabase.addOneJobCard(DatabaseJobCard(
-                publicationDate = "Example",
-                jobCard = JobCard(
-                    jobIdOnWebsite ="Example",
-                    publicationDate = "Example",
-                    jobTitle = "Example",
-                    jobDescription = "Example",
-                    jobLocation = "Example",
-                    jobCompany = "Example",
-                    jobSalary = "Example",
-                    jobUrl = "Example"
-                )
+            jobsDatabase.deleteDb()
+            jobsDatabase.addJobCardList(formatJobCardsList(parser.jobsCardsList))
+        }
+    }
+
+    private fun formatJobCardsList(jobsCardList: MutableList<JobCard>): MutableList<DatabaseJobCard>{
+        val databaseJobCardList = mutableListOf<DatabaseJobCard>()
+
+        jobsCardList.forEach { card->
+            databaseJobCardList.add(DatabaseJobCard(
+                publicationDate = card.publicationDate,
+                jobCard = card
             ))
         }
+        return databaseJobCardList
     }
 }

@@ -12,7 +12,7 @@ import com.example.jobaggregator.data.JobCard
 import com.google.gson.Gson
 
 
-@Database(entities = [DatabaseJobCard::class], version = 2, exportSchema = false)
+@Database(entities = [DatabaseJobCard::class], version = 1, exportSchema = false)
 @TypeConverters(JobCardDBConverter::class)
 abstract class JobsDatabase: RoomDatabase(){
 

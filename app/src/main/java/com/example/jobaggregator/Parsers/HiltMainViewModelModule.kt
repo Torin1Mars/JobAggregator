@@ -1,8 +1,6 @@
 package com.example.jobaggregator.Parsers
 
 import android.content.Context
-import com.example.jobaggregator.domain.JobsDatabase
-import com.example.jobaggregator.domain.JobsDbDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,5 +15,11 @@ object HiltMainViewModelModule {
     @Provides
     fun provideWorkUaParser(@ApplicationContext appContext: Context): WorkUaParser {
         return WorkUaParser (appContext)
+    }
+
+    @Singleton
+    @Provides
+    fun provideRabotaUaParser(@ApplicationContext appContext: Context): RabotaUaParser{
+        return RabotaUaParser(appContext)
     }
 }
