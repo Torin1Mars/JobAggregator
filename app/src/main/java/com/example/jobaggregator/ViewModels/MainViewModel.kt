@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
+import com.example.jobaggregator.Parsers.RabotaUaParser
 import com.example.jobaggregator.Parsers.WorkUaParser
 import com.example.jobaggregator.data.DatabaseJobCard
 import com.example.jobaggregator.data.JobCard
@@ -21,19 +22,22 @@ import javax.inject.Inject
 @RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class MainViewModel @Inject constructor(@ApplicationContext context: Context,
-                                        parser: WorkUaParser,
+                                        workUaParser: WorkUaParser,
+                                        rabotaUaParser: RabotaUaParser,
                                         private val jobsDatabase: JobsDbDao ): ViewModel() {
 
     init {
-        CoroutineScope(Dispatchers.Default).launch {
+        rabotaUaParser.parseByQuery()
+        /*CoroutineScope(Dispatchers.Default).launch {
 
-            parser.parseByQuery()
+            workUaParser.parseByQuery()
 
-            Log.d("MyTag", "List size - ${parser.jobsCardsList.size}")
+            Log.d("MyTag", "List size - ${workUaParser.jobsCardsList.size}")
 
             jobsDatabase.deleteDb()
-            jobsDatabase.addJobCardList(formatJobCardsList(parser.jobsCardsList))
-        }
+            jobsDatabase.addJobCardList(formatJobCardsList(workUaParser.jobsCardsList))
+
+        }*/
     }
 
     private fun formatJobCardsList(jobsCardList: MutableList<JobCard>): MutableList<DatabaseJobCard>{

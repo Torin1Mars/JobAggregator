@@ -1,3 +1,5 @@
+import com.android.build.api.dsl.Packaging
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -21,6 +23,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    packaging {
+        resources.excludes.add("META-INF/*")
+        resources.excludes.add("META-INF/DEPENDENCIES/*")
     }
 
     buildTypes {
@@ -71,6 +78,7 @@ dependencies {
     val retrofitVer : String = "3.0.0"
     implementation ("com.squareup.retrofit2:retrofit:$retrofitVer")
     implementation ("com.squareup.retrofit2:converter-scalars:$retrofitVer")
+    implementation ("com.squareup.retrofit2:converter-gson:$retrofitVer")
 
     //Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
@@ -88,4 +96,9 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version") // Use your Room version
 
     implementation ("com.google.code.gson:gson:2.10.1")
+
+    //Selenium
+    implementation("org.seleniumhq.selenium:selenium-java:4.20.0")
+    implementation("io.github.bonigarcia:webdrivermanager:5.8.0")
+
 }
