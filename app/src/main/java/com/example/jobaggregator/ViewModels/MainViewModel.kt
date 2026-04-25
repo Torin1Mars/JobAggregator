@@ -13,9 +13,6 @@ import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.domain.JobsDbDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
@@ -27,7 +24,7 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
                                         private val jobsDatabase: JobsDbDao ): ViewModel() {
 
     init {
-        rabotaUaParser.parseByQuery()
+        rabotaUaParser.test(context)
         /*CoroutineScope(Dispatchers.Default).launch {
 
             workUaParser.parseByQuery()

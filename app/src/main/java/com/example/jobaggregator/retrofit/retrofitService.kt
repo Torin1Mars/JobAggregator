@@ -24,7 +24,4 @@ interface retrofitService {
         @Path("myQuery") userQuery: String,
         @Query("page") pageNum: Int
     ): Response<String>
-
-    @GET("/")
-    fun test(): Call<AngularRespond>
 }

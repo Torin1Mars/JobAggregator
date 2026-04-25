@@ -98,7 +98,9 @@ dependencies {
     implementation ("com.google.code.gson:gson:2.10.1")
 
     //Selenium
-    implementation("org.seleniumhq.selenium:selenium-java:4.20.0")
-    implementation("io.github.bonigarcia:webdrivermanager:5.8.0")
+    implementation ("org.seleniumhq.selenium:selenium-java:4.16.1")
+
+    //Apium
+    implementation("io.appium:java-client:9.2.0")
 
 }

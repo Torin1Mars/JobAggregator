@@ -1,26 +1,29 @@
 package com.example.jobaggregator.Parsers
 
+import android.app.Fragment
 import android.content.Context
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContentProviderCompat.requireContext
 import com.example.jobaggregator.data.JobCard
-import com.example.jobaggregator.retrofit.AngularRespond
 import com.example.jobaggregator.retrofit.RetrofitObj_RabotaUA
 import com.example.jobaggregator.supportingData.dateFormat
-import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.chrome.ChromeDriver
-import org.openqa.selenium.support.ui.WebDriverWait
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import java.nio.file.Paths
+import io.ktor.http.Url
+
+
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -33,37 +36,44 @@ class RabotaUaParser(context : Context) {
 
     val jobsCardsList = mutableListOf<JobCard>()
 
+    fun test(appContext: Context): Unit{
+
+        //TODO Fix starting parsing by WebView
+        val parseWithWebView = ComposeView(appContext).apply{
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                val webView = WebParsedScreen("https://robota.ua/")
+            }
+        }
+    }
+
+    @Composable
+    fun WebParsedScreen(url: String){
+
+        AndroidView(factory = { context ->
+            WebView(context).apply {
+                settings.javaScriptEnabled = true
+
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+
+                        view?.evaluateJavascript("(function() { return document.body.innerText; })();") { result ->
+                            Log.d("MyTag", result)
+                        }
+
+                        addJavascriptInterface(WebPageInterface { data -> Log.d("MyTag", data) }, "Android")
+                    }
+                }
+                loadUrl(url)
+            }
+        },
+            update = {webview ->}
+        )
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun parseByQuery(query: String ="zapros/smila"){
-
-        //TODO Set up this logic :
-
-
-        CoroutineScope(Dispatchers.Default).launch{
-            val respond = RetrofitObj_RabotaUA.api.test()
-
-            delay(5000)
-
-            val data = respond.execute().body()
-            data?.message.let{Log.d("MyTag", data!!.message)}
-        }
-
-
-        RetrofitObj_RabotaUA.api.test()
-            .enqueue(object :Callback<AngularRespond> {
-            override fun onResponse(call: Call<AngularRespond>, response: Response<AngularRespond>) {
-                if (response.isSuccessful) {
-                    val data = response.body()
-
-                    data?.message.let{Log.d("MyTag", data!!.message)}
-                     // Handle parsed data
-                }
-            }
-
-            override fun onFailure(call: Call<AngularRespond>, t: Throwable) {
-                // Handle error
-            }
-        })
 
 
         /*val userQuery: String = query
@@ -225,6 +235,11 @@ class RabotaUaParser(context : Context) {
 
         return card
     }
+}
 
-
+ class WebPageInterface(private val onDataParsed:(String) -> Unit){
+    @JavascriptInterface
+    fun sendDataToKotlin(data: String): Unit{
+        onDataParsed (data)
+    }
 }

@@ -31,8 +31,7 @@ abstract class JobsDatabase: RoomDatabase(){
                         context.applicationContext,
                         JobsDatabase::class.java,
                         "JobsDB"
-                    ).fallbackToDestructiveMigration()
-                        .build()
+                    ).build()
                     INSTANCE = instance
                 }
                 return instance
