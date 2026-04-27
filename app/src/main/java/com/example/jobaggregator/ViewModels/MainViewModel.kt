@@ -1,6 +1,7 @@
 package com.example.jobaggregator.ViewModels
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -24,7 +25,7 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
                                         private val jobsDatabase: JobsDbDao ): ViewModel() {
 
     init {
-        rabotaUaParser.test(context)
+
         /*CoroutineScope(Dispatchers.Default).launch {
 
             workUaParser.parseByQuery()

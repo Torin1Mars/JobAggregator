@@ -1,28 +1,29 @@
 package com.example.jobaggregator
 
+import android.R
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.jobaggregator.Parsers.RabotaUaParser
+import com.example.jobaggregator.Parsers.WebPageInterface
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.ui.theme.JobAggregatorTheme
 import dagger.hilt.android.AndroidEntryPoint
-import io.appium.java_client.android.AndroidDriver
-import io.appium.java_client.android.options.UiAutomator2Options
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.chrome.ChromeDriver
-import org.openqa.selenium.chrome.ChromeOptions
-import org.openqa.selenium.chromium.ChromiumDriver
-import org.openqa.selenium.firefox.FirefoxDriver
-import org.openqa.selenium.remote.DesiredCapabilities
-import java.net.URL
+
 
 @AndroidEntryPoint
 class MainActivity:ComponentActivity() {
@@ -32,40 +33,13 @@ class MainActivity:ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        CoroutineScope(Dispatchers.Default).launch {
-
-        }
-
-
-            /*
-            val caps = DesiredCapabilities()
-            caps.setCapability("platformName", "Android")
-            caps.setCapability("automationName", "UiAutomator2") // Mandatory
-            caps.setCapability("browserName", "Chrome")
-            caps.setCapability("appium:noReset", true)
-
-            val options = ChromeOptions()
-            options.setExperimentalOption("androidPackage", "com.android.chrome")
-
-            options.addArguments("--disable-popup-blocking")
-
-            caps.setCapability(ChromeOptions.CAPABILITY, options)
-
-
-            val driver = AndroidDri
-            driver.get("https://selenium.dev")
-
-            driver.quit()
-
-            Log.d("MyTag", driver.title)*/
-
-
         setContent {
-            val vm : MainViewModel = hiltViewModel()
-
-            JobAggregatorTheme {
-                // TODO
-            }
+            val vm: MainViewModel = hiltViewModel()
+            val parser: RabotaUaParser = RabotaUaParser(this)
+            parser.webParsedScreen()
         }
     }
 }
+
+
+

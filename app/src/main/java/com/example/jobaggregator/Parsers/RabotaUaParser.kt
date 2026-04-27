@@ -1,27 +1,37 @@
 package com.example.jobaggregator.Parsers
 
-import android.app.Fragment
 import android.content.Context
 import android.os.Build
-import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContentProviderCompat.requireContext
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.retrofit.RetrofitObj_RabotaUA
 import com.example.jobaggregator.supportingData.dateFormat
+import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
-import io.ktor.http.Url
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import okhttp3.internal.userAgent
+import okhttp3.internal.wait
 
 
 import java.time.LocalDate
@@ -36,40 +46,44 @@ class RabotaUaParser(context : Context) {
 
     val jobsCardsList = mutableListOf<JobCard>()
 
-    fun test(appContext: Context): Unit{
-
-        //TODO Fix starting parsing by WebView
-        val parseWithWebView = ComposeView(appContext).apply{
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                val webView = WebParsedScreen("https://robota.ua/")
-            }
-        }
-    }
-
     @Composable
-    fun WebParsedScreen(url: String){
+    fun webParsedScreen(){
+        var pageIsLoad by remember { mutableStateOf<Boolean>(false)}
 
-        AndroidView(factory = { context ->
-            WebView(context).apply {
-                settings.javaScriptEnabled = true
+        var rawHtmlPage by remember{ mutableStateOf<String>("") }
 
-                webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
+        if (pageIsLoad){
+            Log.d("MyTag", rawHtmlPage)
 
-                        view?.evaluateJavascript("(function() { return document.body.innerText; })();") { result ->
-                            Log.d("MyTag", result)
+        }
+
+
+        Box(modifier = Modifier.height(0.dp).width(0.dp)){
+            AndroidView(factory = { context ->
+                WebView(context).apply {
+
+                    settings.useWideViewPort = true
+                    settings.javaScriptEnabled = true
+
+                    addJavascriptInterface(
+                        WebPageInterface{html-> rawHtmlPage = html},
+                        "AndroidInterface")
+
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            pageIsLoad = true
+
+                            view?.loadUrl("javascript:window.AndroidInterface.getHtml(document.getElementsByTagName('html')[0].innerHTML);")
                         }
 
-                        addJavascriptInterface(WebPageInterface { data -> Log.d("MyTag", data) }, "Android")
+
                     }
+                    loadUrl(rabotaUaUrl)
                 }
-                loadUrl(url)
-            }
-        },
-            update = {webview ->}
-        )
+            })
+        }
+
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -237,9 +251,9 @@ class RabotaUaParser(context : Context) {
     }
 }
 
- class WebPageInterface(private val onDataParsed:(String) -> Unit){
-    @JavascriptInterface
-    fun sendDataToKotlin(data: String): Unit{
-        onDataParsed (data)
-    }
-}
+ class WebPageInterface(private val onWebPageReceived: (String) -> Unit) {
+     @JavascriptInterface
+     fun getHtml(page: String) {
+         onWebPageReceived(page)
+     }
+ }
