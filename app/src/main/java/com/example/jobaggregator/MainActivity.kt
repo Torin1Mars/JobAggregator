@@ -36,7 +36,7 @@ class MainActivity:ComponentActivity() {
         setContent {
             val vm: MainViewModel = hiltViewModel()
             val parser: RabotaUaParser = RabotaUaParser(this)
-            parser.webParsedScreen()
+            parser.StartParsedScreen()
         }
     }
 }

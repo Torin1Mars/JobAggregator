@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
@@ -17,25 +18,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.core.view.get
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.retrofit.RetrofitObj_RabotaUA
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.internal.userAgent
 import okhttp3.internal.wait
-
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 class RabotaUaParser(context : Context) {
 
@@ -44,41 +45,57 @@ class RabotaUaParser(context : Context) {
 
     private val jobQueryTemplate  = "%s/%s"
 
-    val jobsCardsList = mutableListOf<JobCard>()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @Composable
-    fun webParsedScreen(){
-        var pageIsLoad by remember { mutableStateOf<Boolean>(false)}
+    fun StartParsedScreen(){
+        //Parsing screen is running in hide mode
 
         var rawHtmlPage by remember{ mutableStateOf<String>("") }
 
-        if (pageIsLoad){
-            Log.d("MyTag", rawHtmlPage)
-
-        }
-
-
         Box(modifier = Modifier.height(0.dp).width(0.dp)){
             AndroidView(factory = { context ->
-                WebView(context).apply {
+                val view = WebView(context)
+                val pageIsLoad: Int = 100
 
+                view.webChromeClient = object : WebChromeClient(){
+                    override fun onProgressChanged(view: WebView?, progress: Int) {
+                        if (progress == pageIsLoad) {
+                           CoroutineScope(Dispatchers.IO).launch {
+                               // Waiting till javascript fully execute respond page
+                               delay(2.seconds)
+
+                               parseVacanciesList(htmlRespond = rawHtmlPage)
+                           }
+                        }
+                    }
+                }
+
+                view.apply {
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
 
                     addJavascriptInterface(
-                        WebPageInterface{html-> rawHtmlPage = html},
+                        WebPageInterface{html->
+                            rawHtmlPage = html},
                         "AndroidInterface")
 
                     webViewClient = object : WebViewClient() {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            pageIsLoad = true
 
-                            view?.loadUrl("javascript:window.AndroidInterface.getHtml(document.getElementsByTagName('html')[0].innerHTML);")
+                            view?.loadUrl("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
+
+                           /* view?.evaluateJavascript ("(function() { return document.readyState; });"){pageStatus ->
+                                Log.d("MyTag", pageStatus)
+
+                                if (pageStatus == "\"complete\"") {
+                                    parseVacanciesList(rawHtmlPage)
+                                }
+                            }*/
                         }
-
-
                     }
+
                     loadUrl(rabotaUaUrl)
                 }
             })
@@ -86,78 +103,18 @@ class RabotaUaParser(context : Context) {
 
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun parseByQuery(query: String ="zapros/smila"){
+    fun parseVacanciesList(htmlRespond: String){
+        val vacanciesCardsList = mutableListOf<Element>()
 
+        val document = Ksoup.parse(htmlRespond)
+        val jobsListElement  = document.selectFirst("alliance-jobseeker-mobile-vacancies-list") //"alliance-jobseeker-mobile-vacancies-list:nth-child(2)"
 
-        /*val userQuery: String = query
+        if (jobsListElement != null){
+            val vacanciesCards = jobsListElement.select("alliance-vacancy-card-mobile")
+            vacanciesCardsList.addAll(vacanciesCards)
+        }
 
-        try {
-            val currentResponse = retrofitInstance.api.getJobsQueryAsString("")
-            val htmlPageInString = currentResponse.body()!!
-
-            if (currentResponse.isSuccessful) {
-
-                val howMuchPages = checkIfSeveralPages(htmlPageInString)
-
-                if (howMuchPages > 1){
-
-                    ( 1 .. howMuchPages).forEach { page->
-
-                        try{
-                            val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
-                            val htmlPageInString2 = localResponse.body()!!
-
-                            val jobsList = getJobsIdList(htmlPageInString2)
-                            val foundedJobs = getJobsById(jobsList)
-
-                            jobsCardsList += foundedJobs
-                            Log.d("MyTag", "Page $page vacancies - ${foundedJobs.size}")
-
-
-                        }catch (e: Exception){
-                            CoroutineScope(Dispatchers.Main).launch {
-                                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-                            }
-
-                            Log.d("MyTag", e.message.toString())
-                        }
-                    }
-
-                    Log.d("MyTag", jobsCardsList.size.toString())
-
-                }else{
-
-                    try {
-                        val jobsList = getJobsIdList(htmlPageInString)
-                        val foundedJobs = getJobsById(jobsList)
-
-                        jobsCardsList += foundedJobs
-
-                    }catch (e: Exception){
-                        CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-                        }
-
-                        Log.d("MyTag", e.message.toString())
-                    }
-                }
-
-            } else {
-                //Do nothing
-                CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-                }
-                Log.d("MyTag", "Couldn't load initial request")
-            }
-
-        } catch (e: Exception) {
-            CoroutineScope(Dispatchers.Main).launch {
-                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-            }
-
-            Log.d("MyTag", e.message.toString())
-        }*/
+        Log.d("MyTag", "Size is ${vacanciesCardsList.size}")
     }
 
     fun getJobsIdList(htmlPage: String): MutableList<String>{
