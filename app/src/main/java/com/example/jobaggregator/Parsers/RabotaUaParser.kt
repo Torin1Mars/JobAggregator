@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,16 +48,20 @@ class RabotaUaParser(context : Context) {
     fun test (){
 
         var htmlStrRespond by rememberSaveable { mutableStateOf<String>("") }
+
         var needToCheckPagesCount by rememberSaveable { mutableStateOf<Boolean>(true) }
+        var howManyPagesInRespond by rememberSaveable { mutableStateOf<Int>(0) }
 
         if (needToCheckPagesCount) {
-            getParsedPage(rabotaUaUrl+"/zapros/kyiv", { it -> htmlStrRespond = it })
-            needToCheckPagesCount = false
-        }
+            getParsedPage(rabotaUaUrl+"/zapros/smila", { it -> htmlStrRespond = it })
 
-        if (!htmlStrRespond.isBlank()){
-            Log.d("MyTag", "OK")
-            //var pages = checkHowManyPages(respond.value)
+            if (!htmlStrRespond.isBlank()){
+                howManyPagesInRespond = getPagesCount(htmlStrRespond)
+
+                //Deleting inputs
+                needToCheckPagesCount = false
+                htmlStrRespond = ""
+            }
         }
     }
 
@@ -63,8 +69,8 @@ class RabotaUaParser(context : Context) {
         respondHtmlPage = newValue
     }
 
-    private fun checkHowManyPages(htmlPage: String): Int? {
-        var pagesCount : Int? = null
+    private fun getPagesCount(htmlPage: String): Int {
+        var pagesCount : Int = 0
 
         val document = Ksoup.parse(htmlPage)
         val paginationStatusBar = document.selectFirst(".paginator")
@@ -85,11 +91,28 @@ class RabotaUaParser(context : Context) {
         //Parsing screen is running in hide mode
         var rawHtmlPage by remember { mutableStateOf<String>("") }
 
-        var pageRenderWasFinished by remember {mutableStateOf<Boolean>(false)}
+        var pageHasLoad by remember {mutableStateOf<Boolean>(false)}
 
         Box(modifier = Modifier.height(0.dp).width(0.dp)) {
             AndroidView(factory = { context ->
                 val view = WebView(context)
+
+                view.webChromeClient = object : WebChromeClient() {
+                    override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                        if (newProgress == 100) {
+
+                            if (!pageHasLoad){
+                                //Waiting till Web view fully render web page
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    delay(rabotaUaParerRanderDelay)
+                                    updateRespond(rawHtmlPage)
+                                }
+                            }
+
+                            pageHasLoad = true
+                        }
+                    }
+                }
 
                 view.apply {
                     settings.useWideViewPort = true
@@ -107,15 +130,6 @@ class RabotaUaParser(context : Context) {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             view?.loadUrl("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
-
-                            if (!pageRenderWasFinished){
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    delay(rabotaUaParerRanderDelay)
-                                    updateRespond(rawHtmlPage)
-
-                                    pageRenderWasFinished = true
-                                }
-                            }
                         }
                     }
 
