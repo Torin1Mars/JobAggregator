@@ -8,11 +8,11 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
+import androidx.annotation.StyleRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +41,7 @@ class RabotaUaParser(context : Context) {
     val appContext = context
 
     var respondHtmlPage : String = ""
-    private val jobQueryTemplate  = "%s/%s"
+    private val jobQueryTemplate  =  "%s/jobs/%s"
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
@@ -50,23 +50,62 @@ class RabotaUaParser(context : Context) {
         var htmlStrRespond by rememberSaveable { mutableStateOf<String>("") }
 
         var needToCheckPagesCount by rememberSaveable { mutableStateOf<Boolean>(true) }
-        var howManyPagesInRespond by rememberSaveable { mutableStateOf<Int>(0) }
+        var pagesCountChecked by rememberSaveable { mutableStateOf<Boolean>(false) }
+
+        var pagesInRespond by rememberSaveable { mutableStateOf<Int>(0) }
+
 
         if (needToCheckPagesCount) {
             getParsedPage(rabotaUaUrl+"/zapros/smila", { it -> htmlStrRespond = it })
 
             if (!htmlStrRespond.isBlank()){
-                howManyPagesInRespond = getPagesCount(htmlStrRespond)
+                pagesInRespond = getPagesCount(htmlStrRespond)
 
-                //Deleting inputs
                 needToCheckPagesCount = false
-                htmlStrRespond = ""
+                pagesCountChecked = true
+            }
+        }
+
+        //Doing parsing
+        if (pagesCountChecked){
+            //Temporary
+            pagesInRespond = 1
+
+            when (pagesInRespond){
+                0 -> {}//Do nothing
+                1 -> parseSinglePageRespond(htmlStrRespond)
+                else -> parseSeveralPagesRespond(htmlStrRespond)
             }
         }
     }
 
-    private fun updateRespondValue(newValue : String){
-        respondHtmlPage = newValue
+    private fun parseSeveralPagesRespond(htmlPage: String) {
+
+
+
+
+    }
+
+    private fun parseSinglePageRespond(htmlPage: String) {
+
+        var vacanciesCount: Int = 0
+        var vacanciesQueryList = mutableListOf<String>()
+
+        val document = Ksoup.parse(htmlPage)
+
+        val vacanciesBoxElement  = document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
+        val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
+
+
+        //TODO its ok and I need to add parsing by each vacancy card one by one
+        vacanciesListElement.let { it ->
+            it!!.forEach { vacancy ->
+                val vacancyQuery = vacancy.child(0).attr("href")
+            }
+        }
+
+
+
     }
 
     private fun getPagesCount(htmlPage: String): Int {
@@ -75,9 +114,11 @@ class RabotaUaParser(context : Context) {
         val document = Ksoup.parse(htmlPage)
         val paginationStatusBar = document.selectFirst(".paginator")
 
-        val lastPageCountElement = paginationStatusBar?.select("a.ng-star-inserted")?.get(3);
+        //val lastPageCountElement = paginationStatusBar?.select("a.ng-star-inserted")?.get(3)
+        val lastPageCountElement = paginationStatusBar?.select("a:nth-last-child(2)")
 
-        if (lastPageCountElement !== null){
+
+        if (lastPageCountElement != null){
             pagesCount = lastPageCountElement.text().toInt()
         }
 
