@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,7 +42,7 @@ class RabotaUaParser(context : Context) {
     val appContext = context
 
     var respondHtmlPage : String = ""
-    private val jobQueryTemplate  =  "%s/jobs/%s"
+    private val jobQueryTemplate  =  "%s/%s/"
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
@@ -56,7 +57,7 @@ class RabotaUaParser(context : Context) {
 
 
         if (needToCheckPagesCount) {
-            getParsedPage(rabotaUaUrl+"/zapros/smila", { it -> htmlStrRespond = it })
+            GetParsedPage(rabotaUaUrl+"/zapros/smila", { it -> htmlStrRespond = it })
 
             if (!htmlStrRespond.isBlank()){
                 pagesInRespond = getPagesCount(htmlStrRespond)
@@ -73,38 +74,51 @@ class RabotaUaParser(context : Context) {
 
             when (pagesInRespond){
                 0 -> {}//Do nothing
-                1 -> parseSinglePageRespond(htmlStrRespond)
-                else -> parseSeveralPagesRespond(htmlStrRespond)
+                1 -> ParseSinglePageRespond(htmlStrRespond)
+                else -> ParseSeveralPagesRespond(htmlStrRespond)
             }
         }
     }
 
-    private fun parseSeveralPagesRespond(htmlPage: String) {
+    @Composable
+    private fun ParseSeveralPagesRespond(htmlPage: String) {
 
 
 
 
     }
 
-    private fun parseSinglePageRespond(htmlPage: String) {
-
-        var vacanciesCount: Int = 0
-        var vacanciesQueryList = mutableListOf<String>()
-
-        val document = Ksoup.parse(htmlPage)
-
-        val vacanciesBoxElement  = document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
-        val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
+    @Composable
+    private fun ParseSinglePageRespond(htmlPage: String) {
 
 
-        //TODO its ok and I need to add parsing by each vacancy card one by one
-        vacanciesListElement.let { it ->
-            it!!.forEach { vacancy ->
-                val vacancyQuery = vacancy.child(0).attr("href")
+        var needToCollectVacanciesLinks by remember { mutableStateOf<Boolean>(true) }
+        val vacanciesQueryList = remember { mutableStateListOf<String>()}
+
+        if (needToCollectVacanciesLinks){
+            val document = Ksoup.parse(htmlPage)
+
+            val vacanciesBoxElement  = document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
+            val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
+
+            var vacancyQuery = ""
+            vacanciesListElement.let { it ->
+                it!!.forEach { vacancy ->
+                    vacancyQuery = vacancy.child(0).attr("href")
+
+                    if (!vacancyQuery.isBlank()){
+                        vacanciesQueryList.add(vacancyQuery)
+                    }
+
+                }
             }
+            needToCollectVacanciesLinks = false
+
+            Log.d("MyTag", vacanciesQueryList.toString())
+
+            // TODO I grab all vacancies links now I need to open them one by one and parce all in internal data
+
         }
-
-
 
     }
 
@@ -128,7 +142,7 @@ class RabotaUaParser(context : Context) {
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
-    fun getParsedPage(urlQuery: String, updateRespond:(newValue: String)-> Unit) {
+    fun GetParsedPage(urlQuery: String, updateRespond:(newValue: String)-> Unit) {
         //Parsing screen is running in hide mode
         var rawHtmlPage by remember { mutableStateOf<String>("") }
 
