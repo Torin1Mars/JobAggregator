@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.util.VelocityTrackerAddPointsFix
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.jobaggregator.data.JobCard
@@ -41,12 +42,12 @@ class RabotaUaParser(context : Context) {
 
     val appContext = context
 
-    var respondHtmlPage : String = ""
-    private val jobQueryTemplate  =  "%s/%s/"
+    var respondHtmlPage: String = ""
+    private val jobQueryTemplate = "%s/%s/"
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
-    fun test (){
+    fun test() {
 
         var htmlStrRespond by rememberSaveable { mutableStateOf<String>("") }
 
@@ -57,9 +58,9 @@ class RabotaUaParser(context : Context) {
 
 
         if (needToCheckPagesCount) {
-            GetParsedPage(rabotaUaUrl+"/zapros/smila", { it -> htmlStrRespond = it })
+            GetParsedPage(rabotaUaUrl + "/zapros/smila", { it -> htmlStrRespond = it })
 
-            if (!htmlStrRespond.isBlank()){
+            if (!htmlStrRespond.isBlank()) {
                 pagesInRespond = getPagesCount(htmlStrRespond)
 
                 needToCheckPagesCount = false
@@ -68,11 +69,11 @@ class RabotaUaParser(context : Context) {
         }
 
         //Doing parsing
-        if (pagesCountChecked){
+        if (pagesCountChecked) {
             //Temporary
             pagesInRespond = 1
 
-            when (pagesInRespond){
+            when (pagesInRespond) {
                 0 -> {}//Do nothing
                 1 -> ParseSinglePageRespond(htmlStrRespond)
                 else -> ParseSeveralPagesRespond(htmlStrRespond)
@@ -84,21 +85,24 @@ class RabotaUaParser(context : Context) {
     private fun ParseSeveralPagesRespond(htmlPage: String) {
 
 
-
-
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @Composable
     private fun ParseSinglePageRespond(htmlPage: String) {
 
-
         var needToCollectVacanciesLinks by remember { mutableStateOf<Boolean>(true) }
-        val vacanciesQueryList = remember { mutableStateListOf<String>()}
+        var needToGetAllVacancies by remember { mutableStateOf<Boolean>(false) }
+        var parsingHasFinished by remember { mutableStateOf<Boolean>(false) }
 
-        if (needToCollectVacanciesLinks){
+        val vacanciesQueryList = remember { mutableStateListOf<String>() }
+        val vacanciesHtmlPagesList = remember { mutableStateListOf<String>() }
+
+        if (needToCollectVacanciesLinks) {
             val document = Ksoup.parse(htmlPage)
 
-            val vacanciesBoxElement  = document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
+            val vacanciesBoxElement =
+                document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
             val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
 
             var vacancyQuery = ""
@@ -106,21 +110,35 @@ class RabotaUaParser(context : Context) {
                 it!!.forEach { vacancy ->
                     vacancyQuery = vacancy.child(0).attr("href")
 
-                    if (!vacancyQuery.isBlank()){
+                    if (!vacancyQuery.isBlank()) {
                         vacanciesQueryList.add(vacancyQuery)
                     }
+
+                    needToGetAllVacancies = true
 
                 }
             }
             needToCollectVacanciesLinks = false
-
-            Log.d("MyTag", vacanciesQueryList.toString())
-
-            // TODO I grab all vacancies links now I need to open them one by one and parce all in internal data
-
         }
 
+        if (!needToCollectVacanciesLinks && needToGetAllVacancies) {
+            vacanciesQueryList.forEach { currentVacancy ->
+                val query = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
+                GetParsedPage(query, { it -> vacanciesHtmlPagesList.add(it) })
+            }
+
+            if (vacanciesQueryList.size == vacanciesHtmlPagesList.size) {
+                needToGetAllVacancies = false
+                parsingHasFinished = true
+            }
+
+            if (parsingHasFinished) {
+                //TODO Add here collecting each vacancy and putting it into DB
+            }
+
+        }
     }
+}
 
     private fun getPagesCount(htmlPage: String): Int {
         var pagesCount : Int = 0
@@ -138,7 +156,7 @@ class RabotaUaParser(context : Context) {
 
         return pagesCount
     }
-}
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
