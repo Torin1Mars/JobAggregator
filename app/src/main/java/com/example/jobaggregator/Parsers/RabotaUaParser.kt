@@ -20,15 +20,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.util.VelocityTrackerAddPointsFix
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
-import com.example.jobaggregator.supportingData.rabotaUaParerRanderDelay
+import com.example.jobaggregator.supportingData.monthUa
+import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -123,8 +122,8 @@ class RabotaUaParser(context : Context) {
 
         if (!needToCollectVacanciesLinks && needToGetAllVacancies) {
             vacanciesQueryList.forEach { currentVacancy ->
-                val query = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
-                GetParsedPage(query, { it -> vacanciesHtmlPagesList.add(it) })
+                val vacancyQuery = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
+                GetParsedPage(vacancyQuery, { it -> vacanciesHtmlPagesList.add(it)})
             }
 
             if (vacanciesQueryList.size == vacanciesHtmlPagesList.size) {
@@ -133,12 +132,15 @@ class RabotaUaParser(context : Context) {
             }
 
             if (parsingHasFinished) {
-                //TODO Add here collecting each vacancy and putting it into DB
+                vacanciesHtmlPagesList.forEach { htmlVacancy->
+                    parseVacancyCard(htmlVacancy)
+                }
+
             }
 
         }
     }
-}
+
 
     private fun getPagesCount(htmlPage: String): Int {
         var pagesCount : Int = 0
@@ -160,7 +162,7 @@ class RabotaUaParser(context : Context) {
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
-    fun GetParsedPage(urlQuery: String, updateRespond:(newValue: String)-> Unit) {
+    fun GetParsedPage(urlQuery: String, updateVacancyData:(newValue: String)-> Unit) {
         //Parsing screen is running in hide mode
         var rawHtmlPage by remember { mutableStateOf<String>("") }
 
@@ -177,8 +179,9 @@ class RabotaUaParser(context : Context) {
                             if (!pageHasLoad){
                                 //Waiting till Web view fully render web page
                                 CoroutineScope(Dispatchers.IO).launch {
-                                    delay(rabotaUaParerRanderDelay)
-                                    updateRespond(rawHtmlPage)
+                                    delay(rabotaUaParerRenderDelay)
+
+                                    updateVacancyData(rawHtmlPage)
                                 }
                             }
 
@@ -212,72 +215,64 @@ class RabotaUaParser(context : Context) {
         }
     }
 
-        fun parseVacanciesList(htmlRespond: String) {
-            val vacanciesCardsList = mutableListOf<Element>()
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun parseVacancyCard(jobHtmlPage: String): JobCard {
 
-            val document = Ksoup.parse(htmlRespond)
-            val jobsListElement =
-                document.selectFirst("alliance-jobseeker-mobile-vacancies-list") //"alliance-jobseeker-mobile-vacancies-list:nth-child(2)"
+        val document = Ksoup.parse(jobHtmlPage)
 
-            if (jobsListElement != null) {
-                val vacanciesCards = jobsListElement.select("alliance-vacancy-card-mobile")
-                vacanciesCardsList.addAll(vacanciesCards)
+        fun convertRecivedDate(receivedData: String): String {
+
+            val day  = receivedData.substringBefore(" ")
+
+            var month = receivedData.substringAfter(" ").substringBefore(" ")
+            //TODO Fix here
+            month = monthUa.indexOf(month.uppercase()).toString()
+            if (month.length<2){
+                month = "0"+month
             }
+            val year = receivedData.substringAfter(" ").substringAfter(" ")
 
-            Log.d("MyTag", "Size is ${vacanciesCardsList.size}")
+
+            return day+month+year
         }
 
-        fun getJobsIdList(htmlPage: String): MutableList<String> {
-            val jobsIds = mutableListOf<String>()
+        val element = document.selectFirst("span.santa-text-white:nth-child(1)")
+        var rawDate = element!!.text()
 
-            val document = Ksoup.parse(htmlPage)
+        rawDate = convertRecivedDate(rawDate)
 
-            val jobsElement = document.selectFirst("#pjax-jobs-list")
-            val selection = jobsElement!!.select("#pjax-jobs-list > a")
+        val formater = DateTimeFormatter.ofPattern(dateFormat)
+        val date = LocalDate.parse(rawDate).format(formater).toString()
 
-            selection.forEach { it ->
-                jobsIds.add(it.attr("name"))
-            }
+        val jobTitle: String = document.selectFirst("#h1-name")?.text() ?: "Empty"
+        val jobDescription: String? = document.selectFirst("#job-description")?.text()
 
-            return jobsIds
-        }
+        val blockLocationCompanySalary = document.selectFirst("ul.sm\\:mt-xl")
 
-        @RequiresApi(Build.VERSION_CODES.O)
-        fun parseJob(jobHtmlPage: String, jobUrl: String, thisJobId: String): JobCard {
+        val jobLocation =
+            blockLocationCompanySalary?.selectFirst("[title=Адреса роботи]")?.parent()?.text()?.substringBefore(".")
+        val jobCompany: String? =
+            blockLocationCompanySalary?.selectFirst("[title=Дані про компанію]")?.parent()?.selectFirst(".inline")
+                ?.text()
+        val jobSalary: String? =
+            blockLocationCompanySalary?.selectFirst("[title=Зарплата]")?.nextElementSibling()?.text()
 
-            val document = Ksoup.parse(jobHtmlPage)
+        val card = JobCard(
+            jobIdOnWebsite = "thisJobId",
+            publicationDate = date,
+            jobTitle = jobTitle,
+            jobDescription = jobDescription,
+            jobLocation = jobLocation,
+            jobCompany = jobCompany,
+            jobSalary = jobSalary,
+            jobUrl = "jobUrl"
+        )
 
-            val element = document.selectFirst("time.text-default-7")
-            val rawDate = element!!.attr("datetime").substringBefore(" ")
-            val formater = DateTimeFormatter.ofPattern(dateFormat)
-            val date = LocalDate.parse(rawDate).format(formater).toString()
+        return card
+    }
 
-            val jobTitle: String = document.selectFirst("#h1-name")?.text() ?: "Empty"
-            val jobDescription: String? = document.selectFirst("#job-description")?.text()
 
-            val blockLocationCompanySalary = document.selectFirst("ul.sm\\:mt-xl")
-
-            val jobLocation =
-                blockLocationCompanySalary?.selectFirst("[title=Адреса роботи]")?.parent()?.text()?.substringBefore(".")
-            val jobCompany: String? =
-                blockLocationCompanySalary?.selectFirst("[title=Дані про компанію]")?.parent()?.selectFirst(".inline")
-                    ?.text()
-            val jobSalary: String? =
-                blockLocationCompanySalary?.selectFirst("[title=Зарплата]")?.nextElementSibling()?.text()
-
-            val card = JobCard(
-                jobIdOnWebsite = thisJobId,
-                publicationDate = date,
-                jobTitle = jobTitle,
-                jobDescription = jobDescription,
-                jobLocation = jobLocation,
-                jobCompany = jobCompany,
-                jobSalary = jobSalary,
-                jobUrl = jobUrl
-            )
-
-            return card
-        }
+}
 
 
  class WebPageInterface(private val onWebPageReceived: (String) -> Unit) {
