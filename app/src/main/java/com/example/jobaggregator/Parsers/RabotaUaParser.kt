@@ -220,29 +220,26 @@ class RabotaUaParser(context : Context) {
 
         val document = Ksoup.parse(jobHtmlPage)
 
-        fun convertRecivedDate(receivedData: String): String {
+        fun convertRecivedDate(receivedData: String): LocalDate {
+            val day  = receivedData.substringBefore(" ").toInt()
 
-            val day  = receivedData.substringBefore(" ")
+            var monthText = receivedData.substringAfter(" ").substringBefore(" ")
 
-            var month = receivedData.substringAfter(" ").substringBefore(" ")
-            //TODO Fix here
-            month = monthUa.indexOf(month.uppercase()).toString()
-            if (month.length<2){
-                month = "0"+month
-            }
-            val year = receivedData.substringAfter(" ").substringAfter(" ")
+            val month = monthUa.indexOf(monthText)
 
+            val year = receivedData.substringAfter(" ").substringAfter(" ").toInt()
 
-            return day+month+year
+            return LocalDate.of(day, month,year)
         }
 
         val element = document.selectFirst("span.santa-text-white:nth-child(1)")
         var rawDate = element!!.text()
 
-        rawDate = convertRecivedDate(rawDate)
+        //TODO Still fix here
+        val date = convertRecivedDate(rawDate)
 
         val formater = DateTimeFormatter.ofPattern(dateFormat)
-        val date = LocalDate.parse(rawDate).format(formater).toString()
+        val dateStr = date.format(formater).toString()
 
         val jobTitle: String = document.selectFirst("#h1-name")?.text() ?: "Empty"
         val jobDescription: String? = document.selectFirst("#job-description")?.text()
@@ -259,7 +256,7 @@ class RabotaUaParser(context : Context) {
 
         val card = JobCard(
             jobIdOnWebsite = "thisJobId",
-            publicationDate = date,
+            publicationDate = dateStr,
             jobTitle = jobTitle,
             jobDescription = jobDescription,
             jobLocation = jobLocation,
