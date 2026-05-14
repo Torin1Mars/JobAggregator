@@ -8,7 +8,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
-import androidx.annotation.StyleRes
+import com.example.jobaggregator.R
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -20,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalAutofill
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.jobaggregator.data.JobCard
@@ -28,10 +30,14 @@ import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
+import dagger.hilt.android.qualifiers.ApplicationContext
+import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okio.Utf8
+import java.io.File
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -133,7 +139,8 @@ class RabotaUaParser(context : Context) {
 
             if (parsingHasFinished) {
                 vacanciesHtmlPagesList.forEach { htmlVacancy->
-                    parseVacancyCard(htmlVacancy)
+                    //TODO Safety save it into this local Db
+                    val vacancyJobCard = parseVacancyCard(htmlVacancy)
                 }
 
             }
@@ -181,6 +188,9 @@ class RabotaUaParser(context : Context) {
                                 CoroutineScope(Dispatchers.IO).launch {
                                     delay(rabotaUaParerRenderDelay)
 
+                                    val vacancyId = urlQuery.substringAfter("robota.ua//").removeSuffix("/")
+
+                                    rawHtmlPage = rawHtmlPage + "ORIGIN VACANCY ID =$vacancyId"
                                     updateVacancyData(rawHtmlPage)
                                 }
                             }
@@ -216,7 +226,7 @@ class RabotaUaParser(context : Context) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun parseVacancyCard(jobHtmlPage: String): JobCard {
+    fun parseVacancyCard(jobHtmlPage: String):JobCard {
 
         val document = Ksoup.parse(jobHtmlPage)
 
@@ -229,48 +239,48 @@ class RabotaUaParser(context : Context) {
 
             val year = receivedData.substringAfter(" ").substringAfter(" ").toInt()
 
-            return LocalDate.of(day, month,year)
+            return LocalDate.of(year,month,day)
         }
+
+        val vacancyId =  document.body().ownText().substringAfter("ORIGIN VACANCY ID =")
 
         val element = document.selectFirst("span.santa-text-white:nth-child(1)")
         var rawDate = element!!.text()
 
-        //TODO Still fix here
         val date = convertRecivedDate(rawDate)
 
         val formater = DateTimeFormatter.ofPattern(dateFormat)
         val dateStr = date.format(formater).toString()
 
-        val jobTitle: String = document.selectFirst("#h1-name")?.text() ?: "Empty"
-        val jobDescription: String? = document.selectFirst("#job-description")?.text()
-
-        val blockLocationCompanySalary = document.selectFirst("ul.sm\\:mt-xl")
+        val jobTitle: String = document.selectFirst("[data-id=vacancy-title]")?.text() ?: "Empty"
+        val jobDescription: String? = document.selectFirst("#description-wrap")?.text() ?: "Empty"
 
         val jobLocation =
-            blockLocationCompanySalary?.selectFirst("[title=Адреса роботи]")?.parent()?.text()?.substringBefore(".")
+            document.selectFirst("[data-id=vacancy-city]")?.parent()?.text()?:"No information"
+
         val jobCompany: String? =
-            blockLocationCompanySalary?.selectFirst("[title=Дані про компанію]")?.parent()?.selectFirst(".inline")
-                ?.text()
+            document.selectFirst("a[href^=/company] > span")?.text()?:"No information"
+
         val jobSalary: String? =
-            blockLocationCompanySalary?.selectFirst("[title=Зарплата]")?.nextElementSibling()?.text()
+            document.selectFirst("[data-id=vacancy-salary-from-to]")?.text() ?: "Empty"
+
+        val jobUrl = rabotaUaUrl+"/"+vacancyId
 
         val card = JobCard(
-            jobIdOnWebsite = "thisJobId",
+            jobIdOnWebsite = vacancyId,
             publicationDate = dateStr,
             jobTitle = jobTitle,
             jobDescription = jobDescription,
             jobLocation = jobLocation,
             jobCompany = jobCompany,
             jobSalary = jobSalary,
-            jobUrl = "jobUrl"
+            jobUrl = jobUrl
         )
 
         return card
     }
 
-
 }
-
 
  class WebPageInterface(private val onWebPageReceived: (String) -> Unit) {
      @JavascriptInterface
@@ -278,3 +288,4 @@ class RabotaUaParser(context : Context) {
          onWebPageReceived(page)
      }
  }
+
