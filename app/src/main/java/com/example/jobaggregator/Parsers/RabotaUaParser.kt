@@ -7,6 +7,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.jobaggregator.R
 import androidx.compose.foundation.layout.Box
@@ -30,14 +31,10 @@ import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
-import dagger.hilt.android.qualifiers.ApplicationContext
-import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okio.Utf8
-import java.io.File
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -47,8 +44,13 @@ class RabotaUaParser(context : Context) {
 
     val appContext = context
 
-    var respondHtmlPage: String = ""
     private val jobQueryTemplate = "%s/%s/"
+
+    private val jobsCardsList =  mutableListOf<JobCard>()
+
+    fun getJobsCardsList(): MutableList<JobCard>{
+        return jobsCardsList
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
@@ -60,6 +62,11 @@ class RabotaUaParser(context : Context) {
         var pagesCountChecked by rememberSaveable { mutableStateOf<Boolean>(false) }
 
         var pagesInRespond by rememberSaveable { mutableStateOf<Int>(0) }
+
+        if (!jobsCardsList.isEmpty()){
+            Log.d("MyTag", jobsCardsList.size.toString())
+        }
+
 
 
         if (needToCheckPagesCount) {
@@ -89,7 +96,6 @@ class RabotaUaParser(context : Context) {
     @Composable
     private fun ParseSeveralPagesRespond(htmlPage: String) {
 
-
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -111,21 +117,26 @@ class RabotaUaParser(context : Context) {
             val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
 
             var vacancyQuery = ""
-            vacanciesListElement.let { it ->
-                it!!.forEach { vacancy ->
+
+            if (vacanciesListElement != null){
+                vacanciesListElement.forEach { vacancy ->
                     vacancyQuery = vacancy.child(0).attr("href")
 
                     if (!vacancyQuery.isBlank()) {
                         vacanciesQueryList.add(vacancyQuery)
                     }
-
                     needToGetAllVacancies = true
-
                 }
+
+                needToCollectVacanciesLinks = false
+
+            }else {
+                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
             }
-            needToCollectVacanciesLinks = false
+
         }
 
+        //All of this stages would'nt start to work if in upper logic document haven't successfully parsed
         if (!needToCollectVacanciesLinks && needToGetAllVacancies) {
             vacanciesQueryList.forEach { currentVacancy ->
                 val vacancyQuery = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
@@ -137,17 +148,22 @@ class RabotaUaParser(context : Context) {
                 parsingHasFinished = true
             }
 
+            //TODO check this code while next runs
             if (parsingHasFinished) {
-                vacanciesHtmlPagesList.forEach { htmlVacancy->
-                    //TODO Safety save it into this local Db
-                    val vacancyJobCard = parseVacancyCard(htmlVacancy)
+                runCatching {
+                    vacanciesHtmlPagesList.forEach { htmlVacancy->
+
+                        val vacancyJobCard = parseVacancyCard(htmlVacancy)
+                        //Adding pared data to main container
+                        jobsCardsList.add(vacancyJobCard)
+                    }
+                }.onFailure {
+                    Toast.makeText(appContext, R.string.errorJobCardLoading, Toast.LENGTH_SHORT).show()
                 }
 
             }
-
         }
     }
-
 
     private fun getPagesCount(htmlPage: String): Int {
         var pagesCount : Int = 0
@@ -279,7 +295,6 @@ class RabotaUaParser(context : Context) {
 
         return card
     }
-
 }
 
  class WebPageInterface(private val onWebPageReceived: (String) -> Unit) {

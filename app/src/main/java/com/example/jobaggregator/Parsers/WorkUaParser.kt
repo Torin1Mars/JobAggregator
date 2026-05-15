@@ -19,12 +19,16 @@ import kotlin.String
 
 class WorkUaParser(context: Context) {
 
-    val appContext = context
+    private val appContext = context
 
     private val retrofitInstance: RetrofitObj_WorkUA = RetrofitObj_WorkUA
     private val jobQueryTemplate  = "%s/jobs/%s"
 
-    val jobsCardsList = mutableListOf<JobCard>()
+    private val jobsCardsList = mutableListOf<JobCard>()
+
+    fun getJobsCardsList(): MutableList<JobCard>{
+        return jobsCardsList
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun parseByQuery(query: String = "jobs-smila"){
