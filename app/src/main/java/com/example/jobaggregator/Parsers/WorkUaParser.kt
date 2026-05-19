@@ -7,7 +7,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.jobaggregator.data.JobCard
-import com.example.jobaggregator.retrofit.RetrofitObj_WorkUA
+import com.example.jobaggregator.Retrofit.RetrofitObj_WorkUA
 import com.example.jobaggregator.supportingData.dateFormat
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope

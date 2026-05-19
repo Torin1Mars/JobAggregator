@@ -1,4 +1,4 @@
-package com.example.jobaggregator.retrofit
+package com.example.jobaggregator.Retrofit
 
 import com.example.jobaggregator.supportingData.workUaUrl
 import retrofit2.Retrofit
