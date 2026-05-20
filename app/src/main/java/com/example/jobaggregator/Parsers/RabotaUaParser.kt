@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,20 +63,23 @@ class RabotaUaParser(context : Context) {
         var needToCheckPagesCount by rememberSaveable { mutableStateOf<Boolean>(true) }
         var pagesCountChecked by rememberSaveable { mutableStateOf<Boolean>(false) }
 
-        var pagesInRespond by rememberSaveable { mutableStateOf<Int>(0) }
+        var pagesInRespond: Int by rememberSaveable { mutableStateOf<Int>(0) }
 
         val baseQuery by remember { mutableStateOf<String>(rabotaUaUrl + "/zapros/smila" )}
 
         if (needToCheckPagesCount) {
             GetParsedPage(baseQuery, { it -> htmlStrRespond = it })
+            needToCheckPagesCount = false
+        }
 
-            if (!htmlStrRespond.isBlank()) {
-                pagesInRespond = getPagesCount(htmlStrRespond)
 
-                needToCheckPagesCount = false
-                pagesCountChecked = true
-            }else
-                pagesInRespond = 0
+        //TODO Continuing here its doesent working
+        if (!needToCheckPagesCount &&!pagesCountChecked) {
+            pagesInRespond = getPagesCount(htmlStrRespond)
+            pagesCountChecked = true
+        } else {
+            pagesInRespond = 0
+            pagesCountChecked = true
         }
 
         //Doing parsing
@@ -101,35 +106,56 @@ class RabotaUaParser(context : Context) {
         val queryTemplate = "%s/params;page=%d"
 
         var needToParseFirstPageVacancies by remember { mutableStateOf<Boolean>(true) }
-        var needToGetRestPagesVacancies by remember { mutableStateOf<Boolean>(false) }
+        var needToGetRestPages by remember { mutableStateOf<Boolean>(false) }
+        var needToParseEachVacancy by remember { mutableStateOf<Boolean>(false) }
 
-        val vacanciesList = remember {mutableStateListOf<JobCard>()}
+        val vacanciesPagesList = remember {mutableStateListOf<String>()}
+        val vacanciesJobCardsList = remember {mutableStateListOf<JobCard>()}
 
         //For dev
-        if (vacanciesList.isNotEmpty()){
-            Log.d("MyTag", vacanciesList.size.toString())
+        if (vacanciesPagesList.isNotEmpty()){
+            Log.d("MyTag", vacanciesPagesList.size.toString())
         }
 
         //Initially we already have first responded page so we need to parse vacancies from here
-
         if (needToParseFirstPageVacancies){
-            Log.d("MyTag", queryInitialLink)
-            ParseSinglePageRespond(initialPageRespond,{jobCardsParsedList -> vacanciesList.addAll(jobCardsParsedList)})
+            //Parsing vacancies on first page
+            ParseSinglePageRespond(initialPageRespond,
+                {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)})
 
             needToParseFirstPageVacancies = false
-            needToGetRestPagesVacancies = true
+            needToGetRestPages = true
         }
 
-        if (!needToParseFirstPageVacancies && needToGetRestPagesVacancies){
-            (2..totalPagesInRespond).forEach { page ->
+        if (needToGetRestPages){
+
+            (11..totalPagesInRespond).forEach { page ->
+
                 val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, page)
 
-                //TODO Here I need to implement parsing by several pages respond
-                //it can be possible to use existing single page parsing approach
-                GetParsedPage()
-                ParseSinglePageRespond(currentQuery,{jobCardsParsedList -> vacanciesList.addAll(jobCardsParsedList)})
+                GetParsedPage(currentQuery, {it-> vacanciesPagesList.add(it)})
             }
 
+            needToGetRestPages = false
+            needToParseEachVacancy = true
+        }
+
+        if (needToParseEachVacancy){
+            val tmp = 4
+            if (vacanciesPagesList.size == tmp){
+                Log.d("MyTag", "We are here")
+                vacanciesPagesList.forEach { vacanciesPage->
+                    ParseSinglePageRespond (vacanciesPage,
+                        {jobCardsParsedList-> vacanciesJobCardsList.addAll(jobCardsParsedList)}  )
+                }
+
+                needToParseEachVacancy = false
+            }
+
+        }
+
+        if (vacanciesJobCardsList.size >1){
+            Log.d("MyTag", vacanciesJobCardsList.size.toString())
         }
 
     }
@@ -152,8 +178,7 @@ class RabotaUaParser(context : Context) {
         if (needToCollectVacanciesLinks) {
             val document = Ksoup.parse(htmlPage)
 
-            val vacanciesBoxElement =
-                document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
+            val vacanciesBoxElement = document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
             val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
 
             var vacancyQuery = ""
@@ -175,7 +200,7 @@ class RabotaUaParser(context : Context) {
             }
         }
 
-        //All of this stages would'nt start to work if in upper logic document haven't successfully parsed
+        //All of this stages wouldn't start to work if in upper logic document haven't successfully parsed
         if (!needToCollectVacanciesLinks && needToGetAllVacancies) {
             vacanciesQueryList.forEach { currentVacancy ->
                 val vacancyQuery = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
@@ -252,9 +277,13 @@ class RabotaUaParser(context : Context) {
 
                                     rawHtmlPage = rawHtmlPage + "ORIGIN VACANCY ID =$vacancyId"
                                     updateVacancyData(rawHtmlPage)
+
+                                    //Clearing data
+                                    //view?.clearCache(true)
+                                    //view?.clearHistory()
+                                    //view?.clearAnimation()
                                 }
                             }
-
                             pageHasLoad = true
                         }
                     }
