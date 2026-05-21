@@ -35,7 +35,10 @@ import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okio.utf8Size
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -60,8 +63,9 @@ class RabotaUaParser(context : Context) {
 
         var htmlStrRespond by rememberSaveable { mutableStateOf<String>("") }
 
-        var needToCheckPagesCount by rememberSaveable { mutableStateOf<Boolean>(true) }
-        var pagesCountChecked by rememberSaveable { mutableStateOf<Boolean>(false) }
+        var needToCheckPagesCount by rememberSaveable { mutableStateOf<Boolean>(true)}
+        var pagesCountChecked by rememberSaveable { mutableStateOf<Boolean>(false)}
+        var vacancyParsingStarted by rememberSaveable { mutableStateOf<Boolean>(false) }
 
         var pagesInRespond: Int by rememberSaveable { mutableStateOf<Int>(0) }
 
@@ -72,20 +76,17 @@ class RabotaUaParser(context : Context) {
             needToCheckPagesCount = false
         }
 
-
-        //TODO Continuing here its doesent working
-        if (!needToCheckPagesCount &&!pagesCountChecked) {
+        if (!pagesCountChecked && !htmlStrRespond.isEmpty()) {
             pagesInRespond = getPagesCount(htmlStrRespond)
-            pagesCountChecked = true
-        } else {
-            pagesInRespond = 0
             pagesCountChecked = true
         }
 
         //Doing parsing
-        if (pagesCountChecked) {
+       if (pagesCountChecked && !vacancyParsingStarted) {
+           //Temporary
+           pagesInRespond = 1
 
-            //Doing parsing according to
+           //Doing parsing according to
             when (pagesInRespond) {
                 0 -> {Toast.makeText(appContext, R.string.searchGotZeroResultMessage, Toast.LENGTH_SHORT).show()}//Do nothing
 
@@ -93,6 +94,7 @@ class RabotaUaParser(context : Context) {
                 else -> ParseSeveralPagesRespond(pagesInRespond, baseQuery, htmlStrRespond, {jobCardsParsedList ->jobsCardsList.addAll(jobCardsParsedList)})
             }
 
+           vacancyParsingStarted = true
         }
     }
 
@@ -113,8 +115,8 @@ class RabotaUaParser(context : Context) {
         val vacanciesJobCardsList = remember {mutableStateListOf<JobCard>()}
 
         //For dev
-        if (vacanciesPagesList.isNotEmpty()){
-            Log.d("MyTag", vacanciesPagesList.size.toString())
+        if (vacanciesJobCardsList.isNotEmpty()){
+            Log.d("MyTag", vacanciesJobCardsList.size.toString())
         }
 
         //Initially we already have first responded page so we need to parse vacancies from here
@@ -127,8 +129,9 @@ class RabotaUaParser(context : Context) {
             needToGetRestPages = true
         }
 
-        if (needToGetRestPages){
+        /*
 
+        if (needToGetRestPages){
             (11..totalPagesInRespond).forEach { page ->
 
                 val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, page)
@@ -153,10 +156,9 @@ class RabotaUaParser(context : Context) {
             }
 
         }
+        */
 
-        if (vacanciesJobCardsList.size >1){
-            Log.d("MyTag", vacanciesJobCardsList.size.toString())
-        }
+
 
     }
 
@@ -174,6 +176,10 @@ class RabotaUaParser(context : Context) {
         val vacanciesHtmlPagesList = remember { mutableStateListOf<String>() }
 
         val foundedJobsCardsList = remember { mutableStateListOf<JobCard>() }
+
+
+        // TODO This shit doesent worrking again
+        Log.d("MyTag", vacanciesHtmlPagesList.size.toString())
 
         if (needToCollectVacanciesLinks) {
             val document = Ksoup.parse(htmlPage)
@@ -202,34 +208,42 @@ class RabotaUaParser(context : Context) {
 
         //All of this stages wouldn't start to work if in upper logic document haven't successfully parsed
         if (!needToCollectVacanciesLinks && needToGetAllVacancies) {
+            /*
             vacanciesQueryList.forEach { currentVacancy ->
                 val vacancyQuery = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
                 GetParsedPage(vacancyQuery, { it -> vacanciesHtmlPagesList.add(it)})
-            }
+            }*/
 
-            if (vacanciesQueryList.size == vacanciesHtmlPagesList.size) {
-                needToGetAllVacancies = false
-                parsingByPagesHasFinished = true
-            }
+            val vacancyQuery = jobQueryTemplate.format(rabotaUaUrl, vacanciesQueryList[0])
+            Log.d("MyTag", "here")
+            GetParsedPage(vacancyQuery, {it -> vacanciesHtmlPagesList.add(it)})
 
-            if (parsingByPagesHasFinished && !parsingByJobCards) {
-                runCatching {
-                    vacanciesHtmlPagesList.forEach { htmlVacancy->
+            needToGetAllVacancies = false
+        }
 
-                        val vacancyJobCard = parseVacancyCard(htmlVacancy)
-                        //Adding pared data to main container
-                        foundedJobsCardsList.add(vacancyJobCard)
-                    }
+        if (vacanciesQueryList.size == vacanciesHtmlPagesList.size) {
+            needToGetAllVacancies = false
+            parsingByPagesHasFinished = true
+        }
 
-                    returnParsedVacancies(foundedJobsCardsList)
+        if (parsingByPagesHasFinished && !parsingByJobCards) {
+            runCatching {
+                vacanciesHtmlPagesList.forEach { htmlVacancy ->
 
-                    //It means that all our parsing has been finished
-                    parsingByJobCards = true
-
-                }.onFailure {
-                    Toast.makeText(appContext, R.string.errorJobCardLoading, Toast.LENGTH_SHORT).show()
+                    val vacancyJobCard = parseVacancyCard(htmlVacancy)
+                    //Adding pared data to main container
+                    foundedJobsCardsList.add(vacancyJobCard)
                 }
 
+                returnParsedVacancies(foundedJobsCardsList)
+
+                //It means that all our parsing has been finished
+                parsingByJobCards = true
+
+                Log.d("MyTag", "Parsing has finished ${foundedJobsCardsList.size}")
+
+            }.onFailure {
+                Toast.makeText(appContext, R.string.errorJobCardLoading, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -274,14 +288,17 @@ class RabotaUaParser(context : Context) {
                                     delay(rabotaUaParerRenderDelay)
 
                                     val vacancyId = urlQuery.substringAfter("robota.ua//").removeSuffix("/")
-
                                     rawHtmlPage = rawHtmlPage + "ORIGIN VACANCY ID =$vacancyId"
+
                                     updateVacancyData(rawHtmlPage)
 
-                                    //Clearing data
-                                    //view?.clearCache(true)
-                                    //view?.clearHistory()
-                                    //view?.clearAnimation()
+                                    Log.d("MyTag", rawHtmlPage )
+
+                                    //Closing opened view
+
+                                    withContext(Dispatchers.Main) {
+                                        view?.destroy()
+                                    }
                                 }
                             }
                             pageHasLoad = true
