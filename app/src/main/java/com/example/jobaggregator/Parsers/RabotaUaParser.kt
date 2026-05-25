@@ -113,7 +113,7 @@ class RabotaUaParser(context : Context) {
 
         var needToParseEachVacancy by remember { mutableStateOf<Boolean>(false) }
 
-        var pagesParsedCounter by remember { mutableStateOf<Int>(0) }
+        var pagesParsedCounter = remember { mutableStateOf<Int>(0) }
         var pagesParsedCounterStatus by remember { mutableStateOf<Boolean>(false) }
 
         val vacanciesPagesList = remember {mutableStateListOf<String>()}
@@ -124,14 +124,14 @@ class RabotaUaParser(context : Context) {
         if (needToParseFirstPageVacancies){
             //Parsing vacancies on first page
             ParseSinglePageRespond(initialPageRespond,
-                {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
-                {firstPageVacanciesParsed = true})
+                returnParsedVacancies = {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
+                finishParsing = {firstPageVacanciesParsed = true})
 
             needToParseFirstPageVacancies = false
         }
 
         if (firstPageVacanciesParsed && !vacancyGeneralPagesParsingStarted){
-            (totalPagesInRespond-1..totalPagesInRespond).forEach { page ->
+            (totalPagesInRespond..totalPagesInRespond).forEach { page ->
 
                 val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, page)
                 GetParsedPage(currentQuery, {it-> vacanciesPagesList.add(it)})
@@ -140,30 +140,41 @@ class RabotaUaParser(context : Context) {
         }
 
         //Temporary
-        if (!vacancyGeneralPagesParsingFinished && vacanciesPagesList.size > 1){
+        if (!vacancyGeneralPagesParsingFinished && vacanciesPagesList.isNotEmpty()){
             vacancyGeneralPagesParsingFinished = true
 
             needToParseEachVacancy = true
         }
 
-
-        //TODO Implement here logic where parsing goes page by page
         if (needToParseEachVacancy){
-            vacanciesPagesList.forEach { vacanciesPage->
+            /*vacanciesPagesList.forEach { vacanciesPage->
+                Log.d("MyTag", "Parsing Started")
                 ParseSinglePageRespond (vacanciesPage,
                     {jobCardsParsedList-> vacanciesJobCardsList.addAll(jobCardsParsedList)},
-                    {pagesParsedCounter -= 1})
+                    {pagesParsedCounter = 0;
+                        Log.d("MyTag", "Parsing finished")})
 
                 pagesParsedCounter += 1
-            }
+
+
+            }*/
+
+            Log.d("MyTag", "Parsing Started")
+            pagesParsedCounter.value = 1
+            ParseSinglePageRespond(initialPageRespond,
+                returnParsedVacancies = {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
+                finishParsing = {Log.d("MyTag", "It's Parsed !")})
 
             needToParseEachVacancy = false
             pagesParsedCounterStatus = true
         }
 
-
-        if (pagesParsedCounter == 0 && pagesParsedCounterStatus){
-            Log.d("MyTag", "Its Parsed !")
+        //TODO It doesen't working here
+        //I gues that maybe phantom function of ParseSinglePageRespond is stiil here
+        //but this function internal variables doesent reseted ,for loop iterations ???
+        if (vacanciesJobCardsList.size>10){
+            Log.d("MyTag", vacanciesJobCardsList.size.toString())
+            Log.d("MyTag", "It's Parsed !")
         }
     }
 
