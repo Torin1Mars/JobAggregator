@@ -111,7 +111,7 @@ class RabotaUaParser(context : Context) {
         var vacancyGeneralPagesParsingStarted by remember { mutableStateOf<Boolean>(false) }
         var vacancyGeneralPagesParsingFinished by remember { mutableStateOf<Boolean>(false) }
 
-        var needToParseEachVacancy by remember { mutableStateOf<Boolean>(false) }
+        var doingParsingByPages by remember { mutableStateOf<Boolean>(false) }
 
         var pagesParsedCounter = remember { mutableStateOf<Int>(0) }
         var pagesParsedCounterStatus by remember { mutableStateOf<Boolean>(false) }
@@ -143,38 +143,19 @@ class RabotaUaParser(context : Context) {
         if (!vacancyGeneralPagesParsingFinished && vacanciesPagesList.isNotEmpty()){
             vacancyGeneralPagesParsingFinished = true
 
-            needToParseEachVacancy = true
+            doingParsingByPages = true
         }
 
-        if (needToParseEachVacancy){
-            /*vacanciesPagesList.forEach { vacanciesPage->
-                Log.d("MyTag", "Parsing Started")
-                ParseSinglePageRespond (vacanciesPage,
-                    {jobCardsParsedList-> vacanciesJobCardsList.addAll(jobCardsParsedList)},
-                    {pagesParsedCounter = 0;
-                        Log.d("MyTag", "Parsing finished")})
-
-                pagesParsedCounter += 1
-
-
-            }*/
-
-            Log.d("MyTag", "Parsing Started")
-            pagesParsedCounter.value = 1
-            ParseSinglePageRespond(initialPageRespond,
+        if (doingParsingByPages){
+            //Parsing
+            ParseSinglePageRespond(vacanciesPagesList[0],
                 returnParsedVacancies = {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
-                finishParsing = {Log.d("MyTag", "It's Parsed !")})
+                finishParsing = {firstPageVacanciesParsed = true})
 
-            needToParseEachVacancy = false
-            pagesParsedCounterStatus = true
         }
 
-        //TODO It doesen't working here
-        //I gues that maybe phantom function of ParseSinglePageRespond is stiil here
-        //but this function internal variables doesent reseted ,for loop iterations ???
         if (vacanciesJobCardsList.size>10){
-            Log.d("MyTag", vacanciesJobCardsList.size.toString())
-            Log.d("MyTag", "It's Parsed !")
+            Log.d("MyTag", "Fucking workingg")
         }
     }
 
@@ -193,6 +174,17 @@ class RabotaUaParser(context : Context) {
         val vacanciesHtmlPagesList = remember { mutableStateListOf<String>() }
 
         val foundedJobsCardsList = remember { mutableStateListOf<JobCard>() }
+
+        fun resetToDefault(){
+            needToCollectVacanciesLinks = true
+            needToParseAllVacancies = false
+            parsingByPagesHasFinished = false
+            parsingByJobCardsFinished = false
+
+            vacanciesQueryesList.clear()
+            vacanciesHtmlPagesList.clear()
+            foundedJobsCardsList.clear()
+        }
 
 
         if (needToCollectVacanciesLinks) {
@@ -222,8 +214,8 @@ class RabotaUaParser(context : Context) {
 
             if (vacanciesQueryesList.isNotEmpty()){
                 vacanciesQueryesList.forEach { currentVacancy ->
-                    val vacancyQuery = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
-                    GetParsedPage(vacancyQuery, { it -> vacanciesHtmlPagesList.add(it)})
+                    val currentVacancyQuery = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
+                    GetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it)})
                 }
             }else{
                 //In case when we don't have any vacancy link to parse
@@ -249,6 +241,7 @@ class RabotaUaParser(context : Context) {
 
                 //It means that all our parsing has been finished
                 parsingByJobCardsFinished = true
+                resetToDefault()
 
             }.onFailure {
                 Toast.makeText(appContext, R.string.errorJobCardLoading, Toast.LENGTH_SHORT).show()
