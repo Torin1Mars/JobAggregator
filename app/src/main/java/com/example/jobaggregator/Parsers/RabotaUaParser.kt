@@ -14,7 +14,9 @@ import com.example.jobaggregator.R
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.TimeInput
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -111,14 +113,38 @@ class RabotaUaParser(context : Context) {
         var vacancyGeneralPagesParsingStarted by remember { mutableStateOf<Boolean>(false) }
         var vacancyGeneralPagesParsingFinished by remember { mutableStateOf<Boolean>(false) }
 
-        var doingParsingByPages by remember { mutableStateOf<Boolean>(false) }
-
-        var pagesParsedCounter = remember { mutableStateOf<Int>(0) }
-        var pagesParsedCounterStatus by remember { mutableStateOf<Boolean>(false) }
-
-        val vacanciesPagesList = remember {mutableStateListOf<String>()}
+        val vacanciesPagesList = remember {mutableStateListOf<String>(initialPageRespond)}
         val vacanciesJobCardsList = remember {mutableStateListOf<JobCard>()}
+        var currentParsedPage by remember {mutableStateOf<String>("")}
 
+        var currentParsedPageIndex by remember {mutableStateOf<Int>(0)}
+
+
+        var doingParsingByPages by remember { mutableStateOf<Boolean>(false) }
+        var parsingHasFinished by remember { mutableStateOf<Boolean>(false) }
+
+        //Changing
+        var needCollectVacanciesGeneralPages by remember { mutableStateOf<Boolean>(true) }
+
+        fun startingParseNextPage(){
+            //Need to check if this page not last
+
+            doingParsingByPages = false
+
+            if (currentParsedPageIndex == vacanciesPagesList.size-1){
+
+                doingParsingByPages = false
+                parsingHasFinished = true
+
+            }else{
+                Log.d("MyTag", "Starting next page")
+                //Parsing Next Page
+                currentParsedPageIndex += 1
+                currentParsedPage = vacanciesPagesList[currentParsedPageIndex]
+            }
+        }
+
+        /*
 
         //Initially we already have first responded page so we need to parse vacancies from here
         if (needToParseFirstPageVacancies){
@@ -131,7 +157,7 @@ class RabotaUaParser(context : Context) {
         }
 
         if (firstPageVacanciesParsed && !vacancyGeneralPagesParsingStarted){
-            (totalPagesInRespond..totalPagesInRespond).forEach { page ->
+            (totalPagesInRespond-1..totalPagesInRespond).forEach { page ->
 
                 val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, page)
                 GetParsedPage(currentQuery, {it-> vacanciesPagesList.add(it)})
@@ -142,20 +168,38 @@ class RabotaUaParser(context : Context) {
         //Temporary
         if (!vacancyGeneralPagesParsingFinished && vacanciesPagesList.isNotEmpty()){
             vacancyGeneralPagesParsingFinished = true
+            doingParsingByPages = true
 
+            currentParsedPage = vacanciesPagesList.first()
+        }*/
+        //TODO Its working but I think its nesesary to implement timer in pasing single page part to prevent blocking
+
+        //TODO dont forget to change this for loop
+        if (needCollectVacanciesGeneralPages){
+            (totalPagesInRespond-1..totalPagesInRespond).forEach { page ->
+
+                val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, page)
+                GetParsedPage(currentQuery, {it-> vacanciesPagesList.add(it)})
+            }
+
+            needCollectVacanciesGeneralPages = false
+        }
+
+        if (vacanciesPagesList.size == 3){
+            currentParsedPage = vacanciesPagesList[0]
             doingParsingByPages = true
         }
 
         if (doingParsingByPages){
-            //Parsing
-            ParseSinglePageRespond(vacanciesPagesList[0],
+            //Parsing page by page
+            //Starting parsing from first element
+            ParseSinglePageRespond(currentParsedPage,
                 returnParsedVacancies = {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
-                finishParsing = {firstPageVacanciesParsed = true})
-
+                finishParsing = {startingParseNextPage()} )
         }
 
-        if (vacanciesJobCardsList.size>10){
-            Log.d("MyTag", "Fucking workingg")
+        if (parsingHasFinished){
+            Log.d("MyTag", "Finished : ${vacanciesJobCardsList.size}")
         }
     }
 
