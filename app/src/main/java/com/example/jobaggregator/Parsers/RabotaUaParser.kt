@@ -41,6 +41,9 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 
 
 class RabotaUaParser(context : Context) {
@@ -107,18 +110,11 @@ class RabotaUaParser(context : Context) {
 
         val queryTemplate = "%s/params;page=%d"
 
-        var needToParseFirstPageVacancies by remember { mutableStateOf<Boolean>(true) }
-        var firstPageVacanciesParsed by remember { mutableStateOf<Boolean>(false) }
-
-        var vacancyGeneralPagesParsingStarted by remember { mutableStateOf<Boolean>(false) }
-        var vacancyGeneralPagesParsingFinished by remember { mutableStateOf<Boolean>(false) }
-
         val vacanciesPagesList = remember {mutableStateListOf<String>(initialPageRespond)}
         val vacanciesJobCardsList = remember {mutableStateListOf<JobCard>()}
         var currentParsedPage by remember {mutableStateOf<String>("")}
 
         var currentParsedPageIndex by remember {mutableStateOf<Int>(0)}
-
 
         var doingParsingByPages by remember { mutableStateOf<Boolean>(false) }
         var parsingHasFinished by remember { mutableStateOf<Boolean>(false) }
@@ -143,35 +139,6 @@ class RabotaUaParser(context : Context) {
                 currentParsedPage = vacanciesPagesList[currentParsedPageIndex]
             }
         }
-
-        /*
-
-        //Initially we already have first responded page so we need to parse vacancies from here
-        if (needToParseFirstPageVacancies){
-            //Parsing vacancies on first page
-            ParseSinglePageRespond(initialPageRespond,
-                returnParsedVacancies = {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
-                finishParsing = {firstPageVacanciesParsed = true})
-
-            needToParseFirstPageVacancies = false
-        }
-
-        if (firstPageVacanciesParsed && !vacancyGeneralPagesParsingStarted){
-            (totalPagesInRespond-1..totalPagesInRespond).forEach { page ->
-
-                val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, page)
-                GetParsedPage(currentQuery, {it-> vacanciesPagesList.add(it)})
-            }
-            vacancyGeneralPagesParsingStarted = true
-        }
-
-        //Temporary
-        if (!vacancyGeneralPagesParsingFinished && vacanciesPagesList.isNotEmpty()){
-            vacancyGeneralPagesParsingFinished = true
-            doingParsingByPages = true
-
-            currentParsedPage = vacanciesPagesList.first()
-        }*/
         //TODO Its working but I think its nesesary to implement timer in pasing single page part to prevent blocking
 
         //TODO dont forget to change this for loop
@@ -215,9 +182,12 @@ class RabotaUaParser(context : Context) {
         var parsingByJobCardsFinished by remember { mutableStateOf<Boolean>(false) }
 
         val vacanciesQueryesList = remember { mutableStateListOf<String>() }
+        var vacanciesQueryesListMiddle by remember { mutableStateOf<Int>(0) }
         val vacanciesHtmlPagesList = remember { mutableStateListOf<String>() }
 
         val foundedJobsCardsList = remember { mutableStateListOf<JobCard>() }
+
+        var allowingParsingTime by remember { mutableStateOf<Int>(rabotaUaParerRenderDelay.toInt(DurationUnit.SECONDS)*9+2) }
 
         fun resetToDefault(){
             needToCollectVacanciesLinks = true
@@ -246,8 +216,14 @@ class RabotaUaParser(context : Context) {
                     if (!vacancyQuery.isBlank()) {
                         vacanciesQueryesList.add(vacancyQuery)
                     }
-                    needToParseAllVacancies = true
                 }
+
+                needToParseAllVacancies = true
+                vacanciesQueryesListMiddle = vacanciesQueryesList.size.floorDiv(2)
+
+                Log.d("MyTag", vacanciesQueryesList.size.toString())
+                Log.d("MyTag", vacanciesQueryesListMiddle.toString())
+
             }
 
             needToCollectVacanciesLinks = false
@@ -256,23 +232,46 @@ class RabotaUaParser(context : Context) {
         //All of this stages wouldn't start to work if in upper logic document haven't successfully parsed
         if (!needToCollectVacanciesLinks && needToParseAllVacancies) {
 
-            if (vacanciesQueryesList.isNotEmpty()){
-                vacanciesQueryesList.forEach { currentVacancy ->
-                    val currentVacancyQuery = jobQueryTemplate.format(rabotaUaUrl, currentVacancy)
-                    GetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it)})
+            //TODO Seams like it goes better now , and its still need to improve it
+
+            if (vacanciesHtmlPagesList.isEmpty()){
+
+                Log.d("MyTag", "Starting first part")
+                //First half
+                (0.. vacanciesQueryesListMiddle).forEach { querryIndex->
+                    val currentVacancyQuery = jobQueryTemplate.format(rabotaUaUrl, vacanciesQueryesList[querryIndex])
+
+                    GetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
+                        Log.d("MyTag", "Vacancy parsed")})
+
                 }
-            }else{
+
+            }else if (vacanciesHtmlPagesList.size == vacanciesQueryesListMiddle){
+
+                Log.d("MyTag", "Starting second part")
+                //Second half
+                (vacanciesQueryesListMiddle .. vacanciesQueryesList.size-1).forEach { querryIndex->
+                    val currentVacancyQuery = jobQueryTemplate.format(rabotaUaUrl, vacanciesQueryesList[querryIndex])
+
+                    GetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
+                        Log.d("MyTag", "Vacancy parsed")})
+                }
+
+            }
+            /*
+            else{
                 //In case when we don't have any vacancy link to parse
                 Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-            }
-            needToParseAllVacancies = false
+            }*/
         }
 
         if (vacanciesQueryesList.size == vacanciesHtmlPagesList.size) {
             parsingByPagesHasFinished = true
+            Log.d("MyTag", "Here2")
         }
 
         if (parsingByPagesHasFinished && !parsingByJobCardsFinished) {
+
             runCatching {
                 vacanciesHtmlPagesList.forEach { htmlVacancy ->
 
@@ -281,20 +280,19 @@ class RabotaUaParser(context : Context) {
                     foundedJobsCardsList.add(vacancyJobCard)
                 }
 
-                returnParsedVacancies(foundedJobsCardsList)
-
-                //It means that all our parsing has been finished
-                parsingByJobCardsFinished = true
-                resetToDefault()
-
             }.onFailure {
                 Toast.makeText(appContext, R.string.errorJobCardLoading, Toast.LENGTH_SHORT).show()
             }
 
+            returnParsedVacancies(foundedJobsCardsList)
+
+            //It means that all our parsing has been finished
+            parsingByJobCardsFinished = true
+            resetToDefault()
+
             //This value goes to upper hierarchy function
             finishParsing()
         }
-
     }
 
     private fun getPagesCount(htmlPage: String): Int {
