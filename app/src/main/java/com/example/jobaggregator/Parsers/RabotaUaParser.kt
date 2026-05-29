@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -14,7 +15,6 @@ import com.example.jobaggregator.R
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.TimeInput
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,9 +41,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.DurationUnit
 
 
 class RabotaUaParser(context : Context) {
@@ -125,23 +123,22 @@ class RabotaUaParser(context : Context) {
         fun startingParseNextPage(){
             //Need to check if this page not last
 
-            doingParsingByPages = false
-
             if (currentParsedPageIndex == vacanciesPagesList.size-1){
-
                 doingParsingByPages = false
                 parsingHasFinished = true
 
             }else{
                 Log.d("MyTag", "Starting next page")
+
+                Log.d("MyTag", "Jobcards : " + vacanciesJobCardsList.size.toString())
                 //Parsing Next Page
                 currentParsedPageIndex += 1
+
+                Log.d("MyTag", "Parsed "+ currentParsedPageIndex)
                 currentParsedPage = vacanciesPagesList[currentParsedPageIndex]
             }
         }
-        //TODO Its working but I think its nesesary to implement timer in pasing single page part to prevent blocking
 
-        //TODO dont forget to change this for loop
         if (needCollectVacanciesGeneralPages){
             (totalPagesInRespond-1..totalPagesInRespond).forEach { page ->
 
@@ -187,13 +184,14 @@ class RabotaUaParser(context : Context) {
 
         val foundedJobsCardsList = remember { mutableStateListOf<JobCard>() }
 
-        var allowingParsingTime by remember { mutableStateOf<Int>(rabotaUaParerRenderDelay.toInt(DurationUnit.SECONDS)*9+2) }
+        var parsingFunctionsRunning by remember { mutableStateOf<Int?>(null) }
 
         fun resetToDefault(){
             needToCollectVacanciesLinks = true
             needToParseAllVacancies = false
             parsingByPagesHasFinished = false
             parsingByJobCardsFinished = false
+            parsingFunctionsRunning = null
 
             vacanciesQueryesList.clear()
             vacanciesHtmlPagesList.clear()
@@ -232,46 +230,41 @@ class RabotaUaParser(context : Context) {
         //All of this stages wouldn't start to work if in upper logic document haven't successfully parsed
         if (!needToCollectVacanciesLinks && needToParseAllVacancies) {
 
-            //TODO Seams like it goes better now , and its still need to improve it
-
-            if (vacanciesHtmlPagesList.isEmpty()){
-
+            if (vacanciesHtmlPagesList.isEmpty() && parsingFunctionsRunning == null){
                 Log.d("MyTag", "Starting first part")
                 //First half
-                (0.. vacanciesQueryesListMiddle).forEach { querryIndex->
+                (0.. vacanciesQueryesListMiddle-1).forEach { querryIndex->
                     val currentVacancyQuery = jobQueryTemplate.format(rabotaUaUrl, vacanciesQueryesList[querryIndex])
+                    //Increasing on one
+                    parsingFunctionsRunning = (parsingFunctionsRunning ?:0) +1
 
                     GetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
-                        Log.d("MyTag", "Vacancy parsed")})
+                        parsingFunctionsRunning = parsingFunctionsRunning?.dec();
+                        Log.d("MyTag", "Vacancy parsed" +"-" + parsingFunctionsRunning.toString() )})
 
                 }
 
-            }else if (vacanciesHtmlPagesList.size == vacanciesQueryesListMiddle){
+            }else if (vacanciesHtmlPagesList.size == vacanciesQueryesListMiddle && parsingFunctionsRunning == 0 ){
 
                 Log.d("MyTag", "Starting second part")
                 //Second half
                 (vacanciesQueryesListMiddle .. vacanciesQueryesList.size-1).forEach { querryIndex->
                     val currentVacancyQuery = jobQueryTemplate.format(rabotaUaUrl, vacanciesQueryesList[querryIndex])
+                    parsingFunctionsRunning = parsingFunctionsRunning?.inc()
 
                     GetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
-                        Log.d("MyTag", "Vacancy parsed")})
+                        parsingFunctionsRunning = parsingFunctionsRunning?.dec();
+                        Log.d("MyTag", "Vacancy parsed" +"-" + parsingFunctionsRunning.toString())})
                 }
-
             }
-            /*
-            else{
-                //In case when we don't have any vacancy link to parse
-                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-            }*/
         }
 
-        if (vacanciesQueryesList.size == vacanciesHtmlPagesList.size) {
+        if (parsingFunctionsRunning == 0 && vacanciesHtmlPagesList.size > vacanciesQueryesListMiddle+1) {
             parsingByPagesHasFinished = true
-            Log.d("MyTag", "Here2")
+            Log.d("MyTag", "parsing By Pages Has Finished")
         }
 
         if (parsingByPagesHasFinished && !parsingByJobCardsFinished) {
-
             runCatching {
                 vacanciesHtmlPagesList.forEach { htmlVacancy ->
 
@@ -319,14 +312,23 @@ class RabotaUaParser(context : Context) {
 
         var rawHtmlPage by remember { mutableStateOf<String>("") }
 
-        var pageHasLoad by remember {mutableStateOf<Boolean>(false)}
+        var renderNotStarted by remember {mutableStateOf<Boolean>(false)}
+        var parsingTimeExpired  by remember {mutableStateOf<Boolean>(false)}
+
+        LaunchedEffect(Unit) {
+            delay(rabotaUaParerRenderDelay+1.seconds) // Wait for 5seconds
+            parsingTimeExpired = true // Update state to trigger recomposition
+        }
 
         fun close_and_cleen_view(webView: WebView?){
+            rawHtmlPage = ""
+            renderNotStarted = false
+            parsingTimeExpired = false
+
             if (webView != null){
                 (webView.parent as? ViewGroup)?.removeView(webView)
 
                 webView.apply {
-
                     stopLoading()
                     clearHistory()
                     removeAllViews()
@@ -335,8 +337,9 @@ class RabotaUaParser(context : Context) {
 
                 webView.destroy()
             }
-
         }
+
+        //TODO Maybe its need to put all four views inside column and make it with View Model and make in a bit other approach
 
         //Parsing screen is running in hide mode
         Box(modifier = Modifier.height(0.dp).width(0.dp)) {
@@ -347,7 +350,16 @@ class RabotaUaParser(context : Context) {
                     override fun onProgressChanged(view: WebView?, newProgress: Int) {
                         if (newProgress == 100) {
 
-                            if (!pageHasLoad){
+                            if (!renderNotStarted){
+
+                                if (parsingTimeExpired){
+                                    Log.d("MyTag", "TIME EXPIRED !!!")
+                                    close_and_cleen_view(view)
+
+                                    //Return Empty page
+                                    returnPageInRawHtml(rawHtmlPage)
+                                }
+
                                 //Waiting till Web view fully render web page
                                 CoroutineScope(Dispatchers.IO).launch {
                                     delay(rabotaUaParerRenderDelay)
@@ -363,7 +375,7 @@ class RabotaUaParser(context : Context) {
                                     }
                                 }
                             }
-                            pageHasLoad = true
+                            renderNotStarted = true
                         }
                     }
                 }
@@ -380,13 +392,26 @@ class RabotaUaParser(context : Context) {
                     )
 
                     webViewClient = object : WebViewClient() {
-
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             view?.loadUrl("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
                         }
-                    }
 
+                        override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                            //If render got failure
+                            val didCrash = detail?.didCrash() ?: false
+
+                            view?.let {
+                                val parent = it.parent as? android.view.ViewGroup
+                                parent?.removeView(it)
+                                close_and_cleen_view(it)
+                            }
+
+                            returnPageInRawHtml(rawHtmlPage)
+
+                            return true
+                        }
+                    }
                     loadUrl(urlQuery)
                 }
             })
