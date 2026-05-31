@@ -42,6 +42,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 
 
 class RabotaUaParser(context : Context) {
@@ -238,9 +239,14 @@ class RabotaUaParser(context : Context) {
                     //Increasing on one
                     parsingFunctionsRunning = (parsingFunctionsRunning ?:0) +1
 
+                    NewGetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
+                        parsingFunctionsRunning = parsingFunctionsRunning?.dec();
+                        Log.d("MyTag", "Vacancy parsed" +"-" + parsingFunctionsRunning.toString())})
+
+                    /*
                     GetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
                         parsingFunctionsRunning = parsingFunctionsRunning?.dec();
-                        Log.d("MyTag", "Vacancy parsed" +"-" + parsingFunctionsRunning.toString() )})
+                        Log.d("MyTag", "Vacancy parsed" +"-" + parsingFunctionsRunning.toString() )})*/
 
                 }
 
@@ -315,10 +321,10 @@ class RabotaUaParser(context : Context) {
         var renderNotStarted by remember {mutableStateOf<Boolean>(false)}
         var parsingTimeExpired  by remember {mutableStateOf<Boolean>(false)}
 
-        LaunchedEffect(Unit) {
+        /*LaunchedEffect(Unit) {
             delay(rabotaUaParerRenderDelay+1.seconds) // Wait for 5seconds
             parsingTimeExpired = true // Update state to trigger recomposition
-        }
+        }*/
 
         fun close_and_cleen_view(webView: WebView?){
             rawHtmlPage = ""
@@ -339,9 +345,7 @@ class RabotaUaParser(context : Context) {
             }
         }
 
-        //TODO Maybe its need to put all four views inside column and make it with View Model and make in a bit other approach
-
-        //Parsing screen is running in hide mode
+       //Parsing screen is running in hide mode
         Box(modifier = Modifier.height(0.dp).width(0.dp)) {
             AndroidView(factory = { context ->
                 val view = WebView(context)
@@ -394,8 +398,8 @@ class RabotaUaParser(context : Context) {
                     webViewClient = object : WebViewClient() {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            view?.loadUrl("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
-                        }
+                            view?.loadUrl("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")}
+
 
                         override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
                             //If render got failure
@@ -408,7 +412,6 @@ class RabotaUaParser(context : Context) {
                             }
 
                             returnPageInRawHtml(rawHtmlPage)
-
                             return true
                         }
                     }
@@ -472,11 +475,91 @@ class RabotaUaParser(context : Context) {
 
         return card
     }
-}
 
- class WebPageInterface(private val onWebPageReceived: (String) -> Unit) {
-     @JavascriptInterface
-     fun getHtml(page: String) {
-         onWebPageReceived(page)
-     }
- }
+
+    @Composable
+    fun NewGetParsedPage(urlQuery: String, returnPageInRawHtml:(htmlString: String)-> Unit) {
+
+        var rawHtmlPage by remember { mutableStateOf<String>("") }
+
+        val desktopUserAgent by remember { mutableStateOf<String>("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36") }
+        var currentWebView by remember { mutableStateOf<WebView?>(null) }
+
+        var renderHasFinished by remember { mutableStateOf<Boolean>(false) }
+
+        //TODO okay , and here its need to add producer thread control
+
+        fun close_current_view(webView: WebView?){
+            rawHtmlPage = ""
+            renderHasFinished = false
+
+            if (webView != null){
+                (webView.parent as? ViewGroup)?.removeView(webView)
+
+                webView.apply {
+                    stopLoading()
+                    clearHistory()
+                    removeAllViews()
+                    webChromeClient = null
+                }
+
+                webView.destroy()
+            }
+        }
+
+        //Parsing screen is running in hide mode
+        Box(modifier = Modifier.height(0.dp).width(0.dp)) {
+            AndroidView(factory = { context ->
+
+                val webView = WebView(context)
+                currentWebView = webView
+
+                webView.apply {
+                    settings.userAgentString = desktopUserAgent
+
+                    settings.useWideViewPort = true
+                    settings.javaScriptEnabled = true
+
+                    addJavascriptInterface(
+                        WebPageInterface2 (onWebPageReceived = { html ->
+                            rawHtmlPage = html}, {returnPageInRawHtml (rawHtmlPage);
+                            close_current_view(currentWebView) }),
+                        "AndroidInterface"
+                    )
+
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+
+                            view?.postDelayed({
+                                view.evaluateJavascript("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');", null)
+                            },rabotaUaParerRenderDelay.toLong(DurationUnit.MILLISECONDS))
+                        }
+                    }
+                    loadUrl(urlQuery)
+                }
+            })
+
+        }
+    }
+
+    private inner class WebPageInterface(private val onWebPageReceived: (String) -> Unit) {
+        @JavascriptInterface
+        fun getHtml(page: String) {
+            onWebPageReceived(page)
+            Log.d("MyTag", "Seams like its parsed1")
+        }
+    }
+
+    private inner class WebPageInterface2(private val onWebPageReceived: (String) -> Unit, private val closeWebView:()-> Unit) {
+        @JavascriptInterface
+        fun getHtml(page: String) {
+            onWebPageReceived(page)
+
+            closeWebView()
+            Log.d("MyTag", "Seams like its parsed2")
+        }
+    }
+
+
+}
