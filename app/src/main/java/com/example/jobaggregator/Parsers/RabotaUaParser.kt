@@ -1,6 +1,7 @@
 package com.example.jobaggregator.Parsers
 
 import android.content.Context
+import android.graphics.DiscretePathEffect
 import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
@@ -13,6 +14,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.jobaggregator.R
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -30,13 +32,17 @@ import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
+import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.internal.wait
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -73,7 +79,7 @@ class RabotaUaParser(context : Context) {
         val baseQuery by remember { mutableStateOf<String>(rabotaUaUrl + "/zapros/smila" )}
 
         if (needToCheckPagesCount) {
-            GetParsedPage(baseQuery, { it -> htmlStrRespond = it })
+            GetOneParsedPage(baseQuery, { it -> htmlStrRespond = it })
             needToCheckPagesCount = false
         }
 
@@ -82,6 +88,9 @@ class RabotaUaParser(context : Context) {
 
             pagesCountChecked = true
             vacancyParsingStarted = true
+
+            //TODO TEMPORARY
+            pagesInRespond = 1
         }
 
 
@@ -92,7 +101,7 @@ class RabotaUaParser(context : Context) {
                when (pagesInRespond) {
                    0 -> {Toast.makeText(appContext, R.string.searchGotZeroResultMessage, Toast.LENGTH_SHORT).show()}//Do nothing
 
-                   1 -> ParseSinglePageRespond(htmlStrRespond,
+                   1 ->  NewParseSinglePageRespond(htmlStrRespond,
                        {jobCardsParsedList ->jobsCardsList.addAll(jobCardsParsedList)},
                        {vacancyParsingFinished = true})
                    else -> ParseSeveralPagesRespond(pagesInRespond, baseQuery, htmlStrRespond, {jobCardsParsedList ->jobsCardsList.addAll(jobCardsParsedList)})
@@ -239,7 +248,7 @@ class RabotaUaParser(context : Context) {
                     //Increasing on one
                     parsingFunctionsRunning = (parsingFunctionsRunning ?:0) +1
 
-                    NewGetParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
+                    GetOneParsedPage(currentVacancyQuery, { it -> vacanciesHtmlPagesList.add(it);
                         parsingFunctionsRunning = parsingFunctionsRunning?.dec();
                         Log.d("MyTag", "Vacancy parsed" +"-" + parsingFunctionsRunning.toString())})
 
@@ -476,22 +485,121 @@ class RabotaUaParser(context : Context) {
         return card
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    @Composable
+    private fun NewParseSinglePageRespond(rawHtml: String,
+                                       returnParsedVacancies:(vacanciesList: MutableList<JobCard>)-> Unit,
+                                       finishParsing:()-> Unit){
+
+        var needToCollectVacanciesLinks by remember { mutableStateOf<Boolean>(true) }
+        var needToParseAllVacancies by remember { mutableStateOf<Boolean>(false) }
+        var parsingByPagesHasFinished by remember { mutableStateOf<Boolean>(false) }
+        var parsingByJobCardsFinished by remember { mutableStateOf<Boolean>(false) }
+
+        val vacanciesQueryesList = remember { mutableStateListOf<String>() }
+        var vacanciesQueryesListMiddle by remember { mutableStateOf<Int>(0) }
+        val vacanciesHtmlPagesList = remember { mutableStateListOf<String>() }
+
+        val foundedJobsCardsList = remember { mutableStateListOf<JobCard>() }
+
+        var parsingFunctionsRunning by remember { mutableStateOf<Int?>(null) }
+
+        fun resetToDefault(){
+            needToCollectVacanciesLinks = true
+            needToParseAllVacancies = false
+            parsingByPagesHasFinished = false
+            parsingByJobCardsFinished = false
+            parsingFunctionsRunning = null
+
+            vacanciesQueryesList.clear()
+            vacanciesHtmlPagesList.clear()
+            foundedJobsCardsList.clear()
+        }
+
+
+        if (needToCollectVacanciesLinks) {
+            val document = Ksoup.parse(rawHtml)
+
+            val vacanciesBoxElement = document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
+            val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
+
+            var vacancyQuery = ""
+
+            if (vacanciesListElement != null){
+                vacanciesListElement.forEach { vacancy ->
+                    vacancyQuery = vacancy.child(0).attr("href")
+
+                    if (!vacancyQuery.isBlank()) {
+                        vacanciesQueryesList.add(vacancyQuery)
+                    }
+                }
+
+                needToParseAllVacancies = true
+
+                Log.d("MyTag", vacanciesQueryesList.size.toString())
+            }
+
+            needToCollectVacanciesLinks = false
+        }
+
+        //All of this stages wouldn't start to work if in upper logic document haven't successfully parsed
+        //if (!needToCollectVacanciesLinks && needToParseAllVacancies) {
+
+        if (vacanciesQueryesList.size == 9) {
+
+            // TODO  Ok Next continuing working here
+            Column(modifier = Modifier.height(0.dp).width(0.dp)) {
+                (vacanciesQueryesList).forEach { vacancyQuery ->
+                    val currentVacancyFullLink = rabotaUaUrl + vacancyQuery
+                    GetOneParsedPage (currentVacancyFullLink, {parsedVacancyPage->vacanciesHtmlPagesList.add(parsedVacancyPage)})
+                }
+            }
+        }
+
+        if (parsingFunctionsRunning == 0 && vacanciesHtmlPagesList.size > vacanciesQueryesListMiddle+1) {
+            parsingByPagesHasFinished = true
+            Log.d("MyTag", "parsing By Pages Has Finished")
+        }
+
+        if (parsingByPagesHasFinished && !parsingByJobCardsFinished) {
+            runCatching {
+                vacanciesHtmlPagesList.forEach { htmlVacancy ->
+
+                    val vacancyJobCard = parseVacancyCard(htmlVacancy)
+                    //Adding pared data to main container
+                    foundedJobsCardsList.add(vacancyJobCard)
+                }
+
+            }.onFailure {
+                Toast.makeText(appContext, R.string.errorJobCardLoading, Toast.LENGTH_SHORT).show()
+            }
+
+            returnParsedVacancies(foundedJobsCardsList)
+
+            //It means that all our parsing has been finished
+            parsingByJobCardsFinished = true
+            resetToDefault()
+
+            //This value goes to upper hierarchy function
+            finishParsing()
+        }
+    }
+
 
     @Composable
-    fun NewGetParsedPage(urlQuery: String, returnPageInRawHtml:(htmlString: String)-> Unit) {
+    fun GetOneParsedPage(urlQuery: String, returnPageInRawHtml:(htmlString: String)-> Unit) {
 
         var rawHtmlPage by remember { mutableStateOf<String>("") }
 
         val desktopUserAgent by remember { mutableStateOf<String>("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36") }
         var currentWebView by remember { mutableStateOf<WebView?>(null) }
 
-        var renderHasFinished by remember { mutableStateOf<Boolean>(false) }
+        var pageHasBeenLoad by remember { mutableStateOf<Boolean>(false) }
 
-        //TODO okay , and here its need to add producer thread control
-
-        fun close_current_view(webView: WebView?){
+        fun closeWebView(webView: WebView?){
+            //returning to default settings
             rawHtmlPage = ""
-            renderHasFinished = false
+            pageHasBeenLoad = false
 
             if (webView != null){
                 (webView.parent as? ViewGroup)?.removeView(webView)
@@ -504,6 +612,29 @@ class RabotaUaParser(context : Context) {
                 }
 
                 webView.destroy()
+            }
+        }
+
+        if (!pageHasBeenLoad) {
+            CoroutineScope(Dispatchers.Default).launch {
+                while (isActive) {
+                    val stringPageRespond = rawHtmlPage
+                    val byteStringSize = stringPageRespond.toByteArray().size
+
+                    if (byteStringSize >= rabotaUaRenderedVacancyPageByteSize) {
+                        Log.d("MyTag", rawHtmlPage.encodeToByteArray().size.toString())
+                        pageHasBeenLoad = true
+
+                        returnPageInRawHtml(rawHtmlPage)
+
+                        withContext (Dispatchers.Main) {
+                            closeWebView(currentWebView)
+                        }
+
+                        break
+                    }
+                    delay(1000L)
+                }
             }
         }
 
@@ -520,26 +651,36 @@ class RabotaUaParser(context : Context) {
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
 
-                    addJavascriptInterface(
+                    /*addJavascriptInterface(
                         WebPageInterface2 (onWebPageReceived = { html ->
                             rawHtmlPage = html}, {returnPageInRawHtml (rawHtmlPage);
                             close_current_view(currentWebView) }),
                         "AndroidInterface"
+                    )*/
+
+                    addJavascriptInterface(
+                        WebPageInterface2 (onWebPageReceived = { html ->
+                            rawHtmlPage = html}),
+                        "AndroidInterface"
                     )
 
                     webViewClient = object : WebViewClient() {
+
+                        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
 
-                            view?.postDelayed({
+                            view?.loadUrl("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
+
+                            /*view?.postDelayed({
                                 view.evaluateJavascript("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');", null)
-                            },rabotaUaParerRenderDelay.toLong(DurationUnit.MILLISECONDS))
+                            },rabotaUaParerRenderDelay.toLong(DurationUnit.MILLISECONDS))*/
                         }
                     }
+
                     loadUrl(urlQuery)
                 }
             })
-
         }
     }
 
@@ -551,15 +692,11 @@ class RabotaUaParser(context : Context) {
         }
     }
 
-    private inner class WebPageInterface2(private val onWebPageReceived: (String) -> Unit, private val closeWebView:()-> Unit) {
+    private inner class WebPageInterface2(private val onWebPageReceived: (String) -> Unit) {
         @JavascriptInterface
         fun getHtml(page: String) {
             onWebPageReceived(page)
-
-            closeWebView()
-            Log.d("MyTag", "Seams like its parsed2")
         }
     }
-
 
 }
