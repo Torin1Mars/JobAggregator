@@ -2,7 +2,8 @@
     <string name="app_name">"JobAggregator"</string>
 
     <string name="errorDataLoading">"Couldn't load data"</string>
-    <string name="errorJobCardLoading">"Couldn't load JobCard"</string>
+    <string name="errorJobCardLoading">"Couldn't load Vacancy page"</string>
+    <string name="errorJobCardParsing">"Couldn't properly parse Vacancy data"</string>
 
     <string name="searchGotZeroResultMessage">"By your current query hasn't found any results"</string>
 
