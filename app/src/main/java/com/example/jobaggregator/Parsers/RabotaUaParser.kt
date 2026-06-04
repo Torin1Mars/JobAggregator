@@ -31,6 +31,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
+import com.example.jobaggregator.supportingData.rabotaUaMaxParsedPagesInOnes
 import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
 import com.example.jobaggregator.supportingData.rabotaUaUrl
@@ -88,7 +89,6 @@ class RabotaUaParser(context : Context) {
 
             pagesCountChecked = true
             vacancyParsingStarted = true
-
         }
 
 
@@ -484,22 +484,22 @@ class RabotaUaParser(context : Context) {
                                          initialPageRespond: String,
                                          returnParsedVacancies:(vacanciesList: MutableList<JobCard>)-> Unit) {
 
-        val queryTemplate = "%s/params;page=%d"
 
-        val vacanciesPagesList = remember {mutableStateListOf<String>(initialPageRespond)}
+        val vacanciesMainPagesList = remember {mutableStateListOf<String>(initialPageRespond)}
         val vacanciesJobCardsList = remember {mutableStateListOf<JobCard>()}
-        var currentParsedPage by remember {mutableStateOf<String>("")}
+        var currentParsedPage by remember {mutableStateOf<String>(initialPageRespond)}
 
-        var currentParsedPageIndex by remember {mutableStateOf<Int>(0)}
+        var currentParsedPageIndex by remember {mutableStateOf<Int>(1)} //Starting parse from second page
 
-        var doingParsingByPages by remember { mutableStateOf<Boolean>(true) }
+        var needToCollectMainVacanciesPages by remember { mutableStateOf<Boolean>(true) }
+        var startingParsingByPages by remember { mutableStateOf<Boolean>(false) }
         var parsingHasFinished by remember { mutableStateOf<Boolean>(false) }
 
         fun startingParseNextPage(){
             //Need to check if this page not last
 
-            if (currentParsedPageIndex == vacanciesPagesList.size-1){
-                doingParsingByPages = false
+            if (currentParsedPageIndex == vacanciesMainPagesList.size-1){
+                startingParsingByPages = false
                 parsingHasFinished = true
 
             }else{
@@ -510,16 +510,28 @@ class RabotaUaParser(context : Context) {
                 currentParsedPageIndex += 1
 
                 Log.d("MyTag", "Parsed "+ currentParsedPageIndex)
-                currentParsedPage = vacanciesPagesList[currentParsedPageIndex]
+                currentParsedPage = vacanciesMainPagesList[currentParsedPageIndex]
             }
         }
 
+        if (needToCollectMainVacanciesPages){
+            CollectMainPages(totalPagesInRespond, queryInitialLink,
+                {pagesList -> vacanciesMainPagesList.addAll(pagesList)})
+        }
 
-        //TODO continuing to work here
+        if (vacanciesMainPagesList.size == totalPagesInRespond){
+            Log.d("MyTag", "MainPages have been parsed")
 
-        if (doingParsingByPages){
+            needToCollectMainVacanciesPages = false
+            startingParsingByPages = true
+        }
+
+        //TODO Seams like we reaching 9 page and thread error appear here:
+        if (startingParsingByPages){
+            Log.d("MyTag", "Parsing main pages started")
             //Parsing page by page
             //Starting parsing from first element
+
             NewParseSinglePageRespond (currentParsedPage,
                 returnParsedVacancies = {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
                 finishParsing = {startingParseNextPage()} )
@@ -640,6 +652,60 @@ class RabotaUaParser(context : Context) {
             parseVacanciesJobCards()
 
             parsingFunctionsAreRunning = null
+        }
+    }
+
+    @Composable
+    fun CollectMainPages(totalPagesInRespond: Int, queryInitialLink: String,
+                         returnParsedPages:(returningPagesList: List<String>)-> Unit) {
+
+        var needToParse by remember { mutableStateOf<Boolean>(true) }
+        val queryTemplate by remember { mutableStateOf<String>("%s/params;page=%d") }
+        val vacanciesMainPagesList =  remember { mutableStateListOf<String>() }
+
+        var currentRunningParsingIndex by remember { mutableStateOf<Int>(0) }
+        var currentParsedPageIndex by remember { mutableStateOf<Int>(1) } //We are starting to collect main pages from second page
+
+        fun resetValues(){
+            needToParse = false
+            vacanciesMainPagesList.clear()
+            currentRunningParsingIndex = 0
+            currentParsedPageIndex = 1
+        }
+
+        @Composable
+        fun StartParsingNewPagesPull (){
+            Column(modifier = Modifier.height(0.dp).width(0.dp)) {
+                thismainloop@ for (pageIndex in currentParsedPageIndex+1..totalPagesInRespond){
+
+                    if (currentRunningParsingIndex < rabotaUaMaxParsedPagesInOnes){
+                        val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, pageIndex)
+
+                        GetOneParsedPage (currentQuery,
+                            {parsedVacancyPage->vacanciesMainPagesList.add(parsedVacancyPage);
+                                currentRunningParsingIndex = currentRunningParsingIndex.dec();
+                                Log.d("MyTag", "Parsed " + currentQuery)}
+                        )
+
+                        currentParsedPageIndex = currentParsedPageIndex.inc()
+                        currentRunningParsingIndex = currentRunningParsingIndex.inc()
+                    }else{
+                        break@thismainloop
+                    }
+                }
+
+            }
+        }
+
+        if (needToParse && currentRunningParsingIndex == 0 && vacanciesMainPagesList.size != totalPagesInRespond ){
+            StartParsingNewPagesPull()
+        }
+
+        if (currentRunningParsingIndex == 0 && vacanciesMainPagesList.size == totalPagesInRespond-1 ){
+          //Parsing has finished
+            returnParsedPages (vacanciesMainPagesList)
+
+            resetValues()
         }
     }
 

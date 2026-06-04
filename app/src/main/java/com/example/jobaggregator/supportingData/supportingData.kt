@@ -6,6 +6,7 @@ val workUaUrl: String  = "https://www.work.ua"
 
 val rabotaUaUrl: String  = "https://robota.ua"
 val rabotaUaRenderedVacancyPageByteSize = 100_000
+val rabotaUaMaxParsedPagesInOnes = 5
 val rabotaUaParerRenderDelay = 4.seconds
 
 val dateFormat : String = "dd-MM-yyyy"
