@@ -17,14 +17,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -40,16 +44,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.internal.wait
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.DurationUnit
 
 
 class RabotaUaParser(context : Context) {
@@ -528,7 +528,7 @@ class RabotaUaParser(context : Context) {
 
         //TODO Seams like we reaching 9 page and thread error appear here:
         if (startingParsingByPages){
-            Log.d("MyTag", "Parsing main pages started")
+            Log.d("MyTag", "Parsing main pages by Job Cards started")
             //Parsing page by page
             //Starting parsing from first element
 
@@ -659,6 +659,8 @@ class RabotaUaParser(context : Context) {
     fun CollectMainPages(totalPagesInRespond: Int, queryInitialLink: String,
                          returnParsedPages:(returningPagesList: List<String>)-> Unit) {
 
+        var templist = remember { MutableList(totalPagesInRespond){ "" }.toMutableStateList() }
+
         var needToParse by remember { mutableStateOf<Boolean>(true) }
         val queryTemplate by remember { mutableStateOf<String>("%s/params;page=%d") }
         val vacanciesMainPagesList =  remember { mutableStateListOf<String>() }
@@ -674,28 +676,48 @@ class RabotaUaParser(context : Context) {
         }
 
         @Composable
-        fun StartParsingNewPagesPull (){
-            Column(modifier = Modifier.height(0.dp).width(0.dp)) {
-                thismainloop@ for (pageIndex in currentParsedPageIndex+1..totalPagesInRespond){
+        fun StartParsingNewPagesPull () {
+            /*LazyColumn(modifier = Modifier.height(1.dp).width(1.dp)) {
 
-                    if (currentRunningParsingIndex < rabotaUaMaxParsedPagesInOnes){
+                    items (count = templist.size, key = {pageIndex -> pageIndex }){pageIndex->
                         val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, pageIndex)
 
+                        Log.d("MyTag", "Querry sended " + pageIndex)
                         GetOneParsedPage (currentQuery,
                             {parsedVacancyPage->vacanciesMainPagesList.add(parsedVacancyPage);
                                 currentRunningParsingIndex = currentRunningParsingIndex.dec();
                                 Log.d("MyTag", "Parsed " + currentQuery)}
                         )
+                    }
+                }
+            }*/
+
+            Column(modifier = Modifier.height(0.dp).width(0.dp)) {
+                thismainloop@ for (pageIndex in currentParsedPageIndex + 1..totalPagesInRespond) {
+
+                    if (currentRunningParsingIndex < rabotaUaMaxParsedPagesInOnes) {
+                        val currentQuery =
+                            String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, pageIndex)
+
+                        GetOneParsedPage(
+                            currentQuery,
+                            { parsedVacancyPage ->
+                                vacanciesMainPagesList.add(parsedVacancyPage);
+                                currentRunningParsingIndex = currentRunningParsingIndex.dec();
+                                Log.d("MyTag", "Parsed " + currentQuery)
+                            }
+                        )
 
                         currentParsedPageIndex = currentParsedPageIndex.inc()
                         currentRunningParsingIndex = currentRunningParsingIndex.inc()
-                    }else{
+                    } else {
                         break@thismainloop
                     }
                 }
 
             }
         }
+
 
         if (needToParse && currentRunningParsingIndex == 0 && vacanciesMainPagesList.size != totalPagesInRespond ){
             StartParsingNewPagesPull()
@@ -738,8 +760,38 @@ class RabotaUaParser(context : Context) {
             }
         }
 
+        /*DisposableEffect (Unit){
+
+            val checkingThread = CoroutineScope(Dispatchers.IO).launch {
+                while (isActive) {
+                    val stringPageRespond = rawHtmlPage
+                    val byteStringSize = stringPageRespond.toByteArray().size
+
+                    if (byteStringSize >= rabotaUaRenderedVacancyPageByteSize) {
+                        Log.d("MyTag", rawHtmlPage.encodeToByteArray().size.toString())
+                        pageHasBeenLoad = true
+
+                        //Adding this vacancy http string link to this general html page
+                        val vacancyId = urlQuery.substringAfter("robota.ua//").removeSuffix("/")
+                        rawHtmlPage = rawHtmlPage + "ORIGIN VACANCY ID =$vacancyId"
+
+                        returnPageInRawHtml(rawHtmlPage)
+
+                        break
+                    }
+                    delay(100L)
+                }
+            }
+
+            onDispose {
+                //checkingThread.cancel()
+                //closeWebView(currentWebView)
+            }
+
+            }*/
+
         if (!pageHasBeenLoad) {
-            CoroutineScope(Dispatchers.Default).launch {
+            CoroutineScope(Dispatchers.IO).launch {
                 while (isActive) {
                     val stringPageRespond = rawHtmlPage
                     val byteStringSize = stringPageRespond.toByteArray().size
@@ -798,10 +850,6 @@ class RabotaUaParser(context : Context) {
                             super.onPageFinished(view, url)
 
                             view?.loadUrl("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');")
-
-                            /*view?.postDelayed({
-                                view.evaluateJavascript("javascript:window.AndroidInterface.getHtml('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');", null)
-                            },rabotaUaParerRenderDelay.toLong(DurationUnit.MILLISECONDS))*/
                         }
                     }
 
