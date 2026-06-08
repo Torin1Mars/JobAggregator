@@ -760,7 +760,9 @@ class RabotaUaParser(context : Context) {
             }
         }
 
-        /*DisposableEffect (Unit){
+        //TODO Seams like this approach make sense and now it's need to improve this logic in side special class VebParser Producer
+        /*
+        DisposableEffect (Unit){
 
             val checkingThread = CoroutineScope(Dispatchers.IO).launch {
                 while (isActive) {
@@ -790,6 +792,7 @@ class RabotaUaParser(context : Context) {
 
             }*/
 
+
         if (!pageHasBeenLoad) {
             CoroutineScope(Dispatchers.IO).launch {
                 while (isActive) {
@@ -806,7 +809,7 @@ class RabotaUaParser(context : Context) {
 
                         returnPageInRawHtml(rawHtmlPage)
 
-                        withContext (Dispatchers.Main) {
+                        withContext(Dispatchers.Main) {
                             closeWebView(currentWebView)
                         }
 
