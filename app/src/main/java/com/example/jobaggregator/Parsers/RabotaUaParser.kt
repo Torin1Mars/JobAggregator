@@ -32,6 +32,7 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.jobaggregator.ViewModels.RabotaUaParserViewModel
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
@@ -50,11 +51,14 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import javax.inject.Inject
 
 
-class RabotaUaParser(context : Context) {
+class RabotaUaParser @Inject constructor(context : Context,
+                                         rabotaUaViewModel: RabotaUaParserViewModel) {
 
     val appContext = context
+    val rabotaUaParserViewModel = rabotaUaViewModel
 
     private val jobQueryTemplate = "%s/%s/"
 

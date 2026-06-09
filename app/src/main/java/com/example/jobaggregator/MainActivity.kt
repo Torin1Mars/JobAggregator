@@ -10,6 +10,7 @@ import androidx.annotation.RequiresApi
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.jobaggregator.Parsers.RabotaUaParser
 import com.example.jobaggregator.ViewModels.MainViewModel
+import com.example.jobaggregator.ViewModels.RabotaUaParserViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 
@@ -21,9 +22,11 @@ class MainActivity:ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+
         setContent {
-            val vm: MainViewModel = hiltViewModel()
-            val parser: RabotaUaParser = RabotaUaParser(this)
+            val rabotaUaViewModel: RabotaUaParserViewModel = hiltViewModel()
+
+            val parser: RabotaUaParser = RabotaUaParser(this, rabotaUaViewModel)
             parser.test()
         }
     }
