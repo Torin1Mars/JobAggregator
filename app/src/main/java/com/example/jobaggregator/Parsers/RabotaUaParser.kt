@@ -738,16 +738,15 @@ class RabotaUaParser @Inject constructor(context : Context,
     @Composable
     fun GetOneParsedPage(urlQuery: String, returnPageInRawHtml:(htmlString: String)-> Unit) {
 
-        var rawHtmlPage by remember { mutableStateOf<String>("") }
+        var rawHtmlPage = remember { mutableStateOf<String>("") }
 
         val desktopUserAgent by remember { mutableStateOf<String>("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36") }
-        var currentWebView by remember { mutableStateOf<WebView?>(null) }
 
         var pageHasBeenLoad by remember { mutableStateOf<Boolean>(false) }
 
         fun closeWebView(webView: WebView?){
             //returning to default settings
-            rawHtmlPage = ""
+            rawHtmlPage.value = ""
             pageHasBeenLoad = false
 
             if (webView != null){
@@ -797,7 +796,9 @@ class RabotaUaParser @Inject constructor(context : Context,
             }*/
 
 
+        /*
         if (!pageHasBeenLoad) {
+
             CoroutineScope(Dispatchers.IO).launch {
                 while (isActive) {
                     val stringPageRespond = rawHtmlPage
@@ -822,20 +823,22 @@ class RabotaUaParser @Inject constructor(context : Context,
                     delay(1000L)
                 }
             }
-        }
+        }*/
 
         //Parsing screen is running in hide mode
         Box(modifier = Modifier.height(0.dp).width(0.dp)) {
             AndroidView(factory = { context ->
 
                 val webView = WebView(context)
-                currentWebView = webView
 
                 webView.apply {
                     settings.userAgentString = desktopUserAgent
 
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
+
+                    //TODO Its nice and its need to add here boolean switcher
+                    rabotaUaParserViewModel.watchOnCurrentWebView(rawHtmlPage, webView)
 
                     /*addJavascriptInterface(
                         WebPageInterface2 (onWebPageReceived = { html ->
@@ -845,8 +848,8 @@ class RabotaUaParser @Inject constructor(context : Context,
                     )*/
 
                     addJavascriptInterface(
-                        WebPageInterface2 (onWebPageReceived = { html ->
-                            rawHtmlPage = html}),
+                        WebPageInterface (onWebPageReceived = { html ->
+                            rawHtmlPage.value = html}),
                         "AndroidInterface"
                     )
 
@@ -870,15 +873,8 @@ class RabotaUaParser @Inject constructor(context : Context,
         @JavascriptInterface
         fun getHtml(page: String) {
             onWebPageReceived(page)
-            Log.d("MyTag", "Seams like its parsed1")
         }
-    }
 
-    private inner class WebPageInterface2(private val onWebPageReceived: (String) -> Unit) {
-        @JavascriptInterface
-        fun getHtml(page: String) {
-            onWebPageReceived(page)
-        }
     }
 
 }
