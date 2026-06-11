@@ -99,6 +99,8 @@ class RabotaUaParser @Inject constructor(context : Context,
         //ATTENTION Allow to recompose here:
         if (vacancyParsingStarted && !vacancyParsingFinished) {
 
+            //TODO Continuing to work here
+
                //Doing parsing according to
                when (pagesInRespond) {
                    0 -> {Toast.makeText(appContext, R.string.searchGotZeroResultMessage, Toast.LENGTH_SHORT).show()}//Do nothing
@@ -739,32 +741,38 @@ class RabotaUaParser @Inject constructor(context : Context,
     fun GetOneParsedPage(urlQuery: String, returnPageInRawHtml:(htmlString: String)-> Unit) {
 
         var rawHtmlPage = remember { mutableStateOf<String>("") }
+        var currentWebView by remember { mutableStateOf<WebView?>(null) }
 
         val desktopUserAgent by remember { mutableStateOf<String>("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36") }
 
         var pageHasBeenLoad by remember { mutableStateOf<Boolean>(false) }
 
-        fun closeWebView(webView: WebView?){
-            //returning to default settings
+        fun closeWebViewAndSendRespond(){
+            //Sending rendered page
+            returnPageInRawHtml(rawHtmlPage.value)
+
+            //Returning to default settings
             rawHtmlPage.value = ""
             pageHasBeenLoad = false
 
-            if (webView != null){
-                (webView.parent as? ViewGroup)?.removeView(webView)
+            CoroutineScope(Dispatchers.Main).launch {
+                if (currentWebView != null){
+                    (currentWebView!!.parent as? ViewGroup)?.removeView(currentWebView)
 
-                webView.apply {
-                    stopLoading()
-                    clearHistory()
-                    removeAllViews()
-                    webChromeClient = null
+                    currentWebView?.apply {
+                        stopLoading()
+                        clearHistory()
+                        removeAllViews()
+                        webChromeClient = null
+                    }
+
+                    currentWebView?.destroy()
                 }
-
-                webView.destroy()
             }
         }
 
-        //TODO Seams like this approach make sense and now it's need to improve this logic in side special class VebParser Producer
-        /*
+
+       /*
         DisposableEffect (Unit){
 
             val checkingThread = CoroutineScope(Dispatchers.IO).launch {
@@ -837,15 +845,8 @@ class RabotaUaParser @Inject constructor(context : Context,
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
 
-                    //TODO Its nice and its need to add here boolean switcher
-                    rabotaUaParserViewModel.watchOnCurrentWebView(rawHtmlPage, webView)
-
-                    /*addJavascriptInterface(
-                        WebPageInterface2 (onWebPageReceived = { html ->
-                            rawHtmlPage = html}, {returnPageInRawHtml (rawHtmlPage);
-                            close_current_view(currentWebView) }),
-                        "AndroidInterface"
-                    )*/
+                    currentWebView = webView
+                    rabotaUaParserViewModel.watchOnCurrentWebView(rawHtmlPage, webView, {closeWebViewAndSendRespond()} )
 
                     addJavascriptInterface(
                         WebPageInterface (onWebPageReceived = { html ->

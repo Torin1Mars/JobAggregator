@@ -25,14 +25,14 @@ class RabotaUaParserViewModel @Inject constructor(context: Context,
                                                         val appDbDao: JobsDbDao): ViewModel() {
     private val appContext = context
 
-    internal data class PairedWebView(val viewRenderingPage: MutableState<String>, val currentWebView: WebView)
+    internal data class PairedWebView(val viewRenderingPage: MutableState<String>, val currentWebView: WebView, val closeThisView:()-> Unit)
 
     private val runningViewsWithPagesList = mutableStateListOf<PairedWebView>()
     private val queriesList = mutableStateListOf<String>()
     private var checkerThread by mutableStateOf<Job?>(null)
 
-    public fun watchOnCurrentWebView(htmlPage: MutableState<String>, webView: WebView?) {
-        webView.let { it -> runningViewsWithPagesList.add(PairedWebView(htmlPage, it!!)) }
+    public fun watchOnCurrentWebView(htmlPage: MutableState<String>, webView: WebView?, closeThisView:()-> Unit) {
+        webView.let { it -> runningViewsWithPagesList.add(PairedWebView(htmlPage, it!!, closeThisView )) }
 
         runCheckerThread()
     }
@@ -46,13 +46,11 @@ class RabotaUaParserViewModel @Inject constructor(context: Context,
                     //Checking loading progress
                     while (runningViewsWithPagesList.isNotEmpty()) {
 
+                        //Here we're checking all active views if they completely finished their renders
                         runningViewsWithPagesList.forEach { it ->
                             if (it.viewRenderingPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize) {
-                                closeWebView(it.currentWebView)
-
-                                Log.d("MyTag", "It have been removed")
-
-                                //runningViewsWithPagesList.remove(it)
+                                it.closeThisView()
+                                runningViewsWithPagesList.remove(it)
                             }
                         }
 
@@ -62,21 +60,5 @@ class RabotaUaParserViewModel @Inject constructor(context: Context,
             }
         }
     }
-
-    private fun closeWebView(currentWebView: WebView?){
-
-        if (currentWebView != null){
-            currentWebView.apply {
-                stopLoading()
-                clearHistory()
-                removeAllViews()
-                webChromeClient = null
-            }
-
-            currentWebView.destroy()
-        }
-
-    }
-
 
 }
