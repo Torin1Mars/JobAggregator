@@ -1,7 +1,6 @@
 package com.example.jobaggregator.Parsers
 
 import android.content.Context
-import android.graphics.DiscretePathEffect
 import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
@@ -17,12 +16,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,16 +33,13 @@ import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaMaxParsedPagesInOnes
 import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
-import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -71,7 +63,6 @@ class RabotaUaParser @Inject constructor(context : Context,
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
     fun test() {
-
         var htmlStrRespond by remember { mutableStateOf<String>("") }
 
         var needToCheckPagesCount by remember { mutableStateOf<Boolean>(true)}
@@ -91,14 +82,16 @@ class RabotaUaParser @Inject constructor(context : Context,
         if (!pagesCountChecked && !htmlStrRespond.isEmpty()) {
             pagesInRespond = getPagesCount(htmlStrRespond)
 
-            pagesCountChecked = true
+            //TODO temporary
+            pagesInRespond = 1
+
+                pagesCountChecked = true
             vacancyParsingStarted = true
         }
 
 
         //ATTENTION Allow to recompose here:
         if (vacancyParsingStarted && !vacancyParsingFinished) {
-
             //TODO Continuing to work here
 
                //Doing parsing according to
@@ -108,6 +101,7 @@ class RabotaUaParser @Inject constructor(context : Context,
                    1 ->  NewParseSinglePageRespond(htmlStrRespond,
                        {jobCardsParsedList ->jobsCardsList.addAll(jobCardsParsedList)},
                        {vacancyParsingFinished = true})
+
                    else -> NewParseSeveralPagesRespond(pagesInRespond, baseQuery, htmlStrRespond, {jobCardsParsedList ->jobsCardsList.addAll(jobCardsParsedList)})
                }
            }
@@ -603,9 +597,6 @@ class RabotaUaParser @Inject constructor(context : Context,
             finishParsing()
         }
 
-        // TODO its need to add in this function timer which will be control maximum parsing time here
-
-
         if (needToCollectVacanciesLinks) {
             val document = Ksoup.parse(rawHtml)
 
@@ -637,13 +628,15 @@ class RabotaUaParser @Inject constructor(context : Context,
 
             runCatching {
                 Column(modifier = Modifier.height(0.dp).width(0.dp)) {
-                    (vacanciesQueryesList).forEach { vacancyQuery ->
+                    (vacanciesQueryesList).forEach { thisVacancyQuery ->
                         parsingFunctionsAreRunning = parsingFunctionsAreRunning?.inc()
 
-                        val currentVacancyFullLink = rabotaUaUrl + vacancyQuery
+                        val currentVacancyFullLink = rabotaUaUrl + thisVacancyQuery
+
                         GetOneParsedPage (currentVacancyFullLink,
                             {parsedVacancyPage->vacanciesHtmlPagesList.add(parsedVacancyPage);
-                                parsingFunctionsAreRunning = parsingFunctionsAreRunning?.dec()})
+                                parsingFunctionsAreRunning = parsingFunctionsAreRunning?.dec();
+                                vacanciesQueryesList.remove(thisVacancyQuery)})
                     }
                 }
 
@@ -698,6 +691,8 @@ class RabotaUaParser @Inject constructor(context : Context,
                 }
             }*/
 
+            //TODO It doesn't working , need to sole here :
+
             Column(modifier = Modifier.height(0.dp).width(0.dp)) {
                 thismainloop@ for (pageIndex in currentParsedPageIndex + 1..totalPagesInRespond) {
 
@@ -751,13 +746,15 @@ class RabotaUaParser @Inject constructor(context : Context,
             //Sending rendered page
             returnPageInRawHtml(rawHtmlPage.value)
 
+            Log.d("MyTag", "View was rendered")
+
             //Returning to default settings
             rawHtmlPage.value = ""
             pageHasBeenLoad = false
 
             CoroutineScope(Dispatchers.Main).launch {
                 if (currentWebView != null){
-                    (currentWebView!!.parent as? ViewGroup)?.removeView(currentWebView)
+                    //(currentWebView!!.parent as? ViewGroup)?.removeView(currentWebView)
 
                     currentWebView?.apply {
                         stopLoading()
@@ -771,68 +768,6 @@ class RabotaUaParser @Inject constructor(context : Context,
             }
         }
 
-
-       /*
-        DisposableEffect (Unit){
-
-            val checkingThread = CoroutineScope(Dispatchers.IO).launch {
-                while (isActive) {
-                    val stringPageRespond = rawHtmlPage
-                    val byteStringSize = stringPageRespond.toByteArray().size
-
-                    if (byteStringSize >= rabotaUaRenderedVacancyPageByteSize) {
-                        Log.d("MyTag", rawHtmlPage.encodeToByteArray().size.toString())
-                        pageHasBeenLoad = true
-
-                        //Adding this vacancy http string link to this general html page
-                        val vacancyId = urlQuery.substringAfter("robota.ua//").removeSuffix("/")
-                        rawHtmlPage = rawHtmlPage + "ORIGIN VACANCY ID =$vacancyId"
-
-                        returnPageInRawHtml(rawHtmlPage)
-
-                        break
-                    }
-                    delay(100L)
-                }
-            }
-
-            onDispose {
-                //checkingThread.cancel()
-                //closeWebView(currentWebView)
-            }
-
-            }*/
-
-
-        /*
-        if (!pageHasBeenLoad) {
-
-            CoroutineScope(Dispatchers.IO).launch {
-                while (isActive) {
-                    val stringPageRespond = rawHtmlPage
-                    val byteStringSize = stringPageRespond.toByteArray().size
-
-                    if (byteStringSize >= rabotaUaRenderedVacancyPageByteSize) {
-                        Log.d("MyTag", rawHtmlPage.encodeToByteArray().size.toString())
-                        pageHasBeenLoad = true
-
-                        //Adding this vacancy http string link to this general html page
-                        val vacancyId = urlQuery.substringAfter("robota.ua//").removeSuffix("/")
-                        rawHtmlPage = rawHtmlPage + "ORIGIN VACANCY ID =$vacancyId"
-
-                        returnPageInRawHtml(rawHtmlPage)
-
-                        withContext(Dispatchers.Main) {
-                            closeWebView(currentWebView)
-                        }
-
-                        break
-                    }
-                    delay(1000L)
-                }
-            }
-        }*/
-
         //Parsing screen is running in hide mode
         Box(modifier = Modifier.height(0.dp).width(0.dp)) {
             AndroidView(factory = { context ->
@@ -841,6 +776,8 @@ class RabotaUaParser @Inject constructor(context : Context,
 
                 webView.apply {
                     settings.userAgentString = desktopUserAgent
+
+                    Log.d("MyTag", "View started")
 
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
