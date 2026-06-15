@@ -1,8 +1,7 @@
 package com.example.jobaggregator.hiltProviders
 
 import android.content.Context
-import com.example.jobaggregator.Parsers.WorkUaParser
-import com.example.jobaggregator.ViewModels.RabotaUaParserViewModel
+import com.example.jobaggregator.ViewModels.WebViewProducerViewModel
 import com.example.jobaggregator.domain.JobsDbDao
 import dagger.Module
 import dagger.Provides
@@ -13,10 +12,10 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object HiltRabotaUaParserViewModelProvider {
+object HiltWebViewProducerViewModelProvider {
     @Singleton
     @Provides
-    fun provideRabotaUaParserViewModel(@ApplicationContext appContext: Context, applicationDao: JobsDbDao ): RabotaUaParserViewModel {
-        return RabotaUaParserViewModel(appContext, applicationDao)
+    fun provideRabotaUaParserViewModel(@ApplicationContext appContext: Context, applicationDao: JobsDbDao ): WebViewProducerViewModel {
+        return WebViewProducerViewModel(appContext, applicationDao)
     }
 }

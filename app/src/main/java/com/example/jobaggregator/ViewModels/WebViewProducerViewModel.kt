@@ -1,6 +1,7 @@
 package com.example.jobaggregator.ViewModels
 
 import android.content.Context
+import android.util.Log
 import android.webkit.WebView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -17,15 +18,40 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import android.util.Log
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.toMutableStateList
+import io.ktor.client.plugins.websocket.WebSockets
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @HiltViewModel
-class RabotaUaParserViewModel @Inject constructor(context: Context,
-                                                        val appDbDao: JobsDbDao): ViewModel() {
+class WebViewProducerViewModel @Inject constructor(context: Context,
+                                                   val appDbDao: JobsDbDao): ViewModel() {
     private val appContext = context
 
-    internal data class PairedWebView(val viewRenderingPage: MutableState<String>, val currentWebView: WebView, val closeThisView:()-> Unit)
+    private var viewsIdCounter: Int = 0
+    private val webViewsItemsList = MutableStateFlow(mutableListOf<WebViewItem>())
+
+
+    val webViewsTabsFlow : StateFlow<List<WebViewItem>> = webViewsItemsList.asStateFlow()
+
+    public fun addNewWebView(viewQuery: String){
+        webViewsItemsList.value.add(WebViewItem(viewId = viewsIdCounter.toString(), viewQuery = viewQuery))
+        viewsIdCounter+=1
+
+
+        Log.d("MyTag", "Size = "+webViewsItemsList.value.size)
+        Log.d("MyTag", "Counter= "+viewsIdCounter.toString())
+    }
+
+    public fun closeView(viewId: String){
+        //It's remove current element from common collection
+        webViewsItemsList.value = webViewsItemsList.value.filter{it.viewId != viewId}.toMutableStateList()
+    }
+
+    /*internal data class PairedWebView(val viewRenderingPage: MutableState<String>, val currentWebView: WebView, val closeThisView:()-> Unit)
+
 
     private val runningViewsWithPagesList = mutableStateListOf<PairedWebView>()
     private val queriesList = mutableStateListOf<String>()
@@ -59,6 +85,7 @@ class RabotaUaParserViewModel @Inject constructor(context: Context,
                 }
             }
         }
-    }
-
+    }*/
 }
+
+data class WebViewItem(val viewId: String, val viewQuery: String)

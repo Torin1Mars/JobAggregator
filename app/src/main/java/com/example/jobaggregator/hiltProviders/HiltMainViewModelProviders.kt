@@ -3,7 +3,7 @@ package com.example.jobaggregator.hiltProviders
 import android.content.Context
 import com.example.jobaggregator.Parsers.RabotaUaParser
 import com.example.jobaggregator.Parsers.WorkUaParser
-import com.example.jobaggregator.ViewModels.RabotaUaParserViewModel
+import com.example.jobaggregator.ViewModels.WebViewProducerViewModel
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,7 +22,7 @@ object HiltMainViewModelProviders {
 
     @Singleton
     @Provides
-    fun provideRabotaUaParser(@ApplicationContext appContext: Context, rabotaUaViewModel: RabotaUaParserViewModel): RabotaUaParser {
+    fun provideRabotaUaParser(@ApplicationContext appContext: Context, rabotaUaViewModel: WebViewProducerViewModel): RabotaUaParser {
         return RabotaUaParser(appContext, rabotaUaViewModel)
     }
 }
