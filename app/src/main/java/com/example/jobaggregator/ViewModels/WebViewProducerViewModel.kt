@@ -21,6 +21,7 @@ import javax.inject.Inject
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.toMutableStateList
 import io.ktor.client.plugins.websocket.WebSockets
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,24 +31,64 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
                                                    val appDbDao: JobsDbDao): ViewModel() {
     private val appContext = context
 
-    private var viewsIdCounter: Int = 0
-    private val webViewsItemsList = MutableStateFlow(mutableListOf<WebViewItem>())
+    private var _viewsIdCounter: Int = 0
 
+    private val _webViewsQueriesList = MutableStateFlow(mutableListOf<WebViewQueryItem>())
+    private val _webRunningViewsItemsList = mutableStateListOf<WebViewItem>()
 
-    val webViewsTabsFlow : StateFlow<List<WebViewItem>> = webViewsItemsList.asStateFlow()
+    private var _checkerThread: Job? = null
 
-    public fun addNewWebView(viewQuery: String){
-        webViewsItemsList.value.add(WebViewItem(viewId = viewsIdCounter.toString(), viewQuery = viewQuery))
-        viewsIdCounter+=1
+    val webViewsTabsFlow  = _webViewsQueriesList.asStateFlow()
 
+    public fun addNewWebViewQuery(viewQuery: String){
+        _webViewsQueriesList.value.add(WebViewQueryItem(viewId = _viewsIdCounter.toString(), viewQuery = viewQuery))
 
-        Log.d("MyTag", "Size = "+webViewsItemsList.value.size)
-        Log.d("MyTag", "Counter= "+viewsIdCounter.toString())
+        _viewsIdCounter+=1
+    }
+
+    public fun watchWebView(currentView: WebView, currentViewHtmlPage: MutableState<String>, currentViewQuery: String ){
+        _webRunningViewsItemsList.add(WebViewItem(view = currentView, viewHtmlPage = currentViewHtmlPage, viewQuery = currentViewQuery))
+
+        if (_checkerThread==null){
+            runCheckerThread()
+        }
+    }
+
+    private fun runCheckerThread() {
+        _checkerThread = CoroutineScope(Dispatchers.IO).launch {
+            val currentHtmlPage: String = ""
+            while (_webRunningViewsItemsList.isNotEmpty()){
+                _webRunningViewsItemsList.forEach { currentWebViewItem ->
+
+                    if (currentWebViewItem.viewHtmlPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize){
+                        //it means that our html Page was completely rendered
+                        _webRunningViewsItemsList.remove(currentWebViewItem)
+
+                        _webViewsQueriesList.value.forEach { webViewQuerry->
+                            if (webViewQuerry.viewQuery==currentWebViewItem.viewQuery){
+                                _webViewsQueriesList.value.remove(webViewQuerry)
+                            }
+                        }
+
+                        if (_webViewsQueriesList.value.size == 0){
+                            //It means that all webViews were rendered
+                            _viewsIdCounter = 0
+
+                            Log.d("MyTag", "All Views were rendered")
+                        }
+
+                    }
+                }
+
+                delay(100L)
+            }
+        }
+
     }
 
     public fun closeView(viewId: String){
         //It's remove current element from common collection
-        webViewsItemsList.value = webViewsItemsList.value.filter{it.viewId != viewId}.toMutableStateList()
+        _webViewsQueriesList.value = _webViewsQueriesList.value.filter{it.viewId != viewId}.toMutableStateList()
     }
 
     /*internal data class PairedWebView(val viewRenderingPage: MutableState<String>, val currentWebView: WebView, val closeThisView:()-> Unit)
@@ -88,4 +129,8 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
     }*/
 }
 
-data class WebViewItem(val viewId: String, val viewQuery: String)
+//////////////////////////////////////////////////////////////////////////////////////////
+
+data class WebViewQueryItem(val viewId: String, val viewQuery: String)
+
+data class WebViewItem(val view: WebView, val viewHtmlPage: MutableState<String>, val viewQuery: String)

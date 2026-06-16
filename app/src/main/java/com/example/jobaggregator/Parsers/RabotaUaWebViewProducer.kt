@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,20 +33,21 @@ class RabotaUaWebViewProducer(appContext: Context) {
 
     @Composable
     public fun ProduseUserQuerry(userQuery : String, additional:()-> Unit){
-        val producerViewModel :WebViewProducerViewModel = hiltViewModel()
-        val queries = producerViewModel.webViewsTabsFlow.collectAsStateWithLifecycle()
 
-        LaunchedEffect(Unit) {
-            producerViewModel.addNewWebView(userQuery)
+        var queriesInsertedToViewModel by remember { mutableStateOf<Boolean>(false) }
+        val producerViewModel :WebViewProducerViewModel = hiltViewModel()
+        val queries by producerViewModel.webViewsTabsFlow.collectAsState()
+
+        if (!queriesInsertedToViewModel){
+            producerViewModel.addNewWebViewQuery(userQuery)
+            queriesInsertedToViewModel = true
         }
 
-        //TODO Conting to working here this shit doesen't working
-        Log.d("MyTag", "Size in function "+ queries.value.size)
-
         LazyColumn(modifier = Modifier.height(0.dp).width(0.dp)) {
-            queries.value.forEach { currentQuery ->
+            queries.forEach { currentQuery ->
+
                 item(key = currentQuery.viewId) {
-                    GetParsedPage(currentQuery.viewQuery, {})
+                    GetParsedPage(currentQuery.viewQuery, producerViewModel,  {})
                 }
             }
         }
@@ -54,10 +56,9 @@ class RabotaUaWebViewProducer(appContext: Context) {
 
 
     @Composable
-    private fun GetParsedPage(urlQuery: String, returnPageInRawHtml:(htmlString: String)-> Unit) {
+    private fun GetParsedPage(urlQuery: String, drivingViewModel : WebViewProducerViewModel, returnPageInRawHtml:(htmlString: String)-> Unit) {
 
         val webViewViewModel: WebViewProducerViewModel = hiltViewModel()
-
 
         var rawHtmlPage = remember { mutableStateOf<String>("") }
         var currentWebView by remember { mutableStateOf<WebView?>(null) }
@@ -106,9 +107,7 @@ class RabotaUaWebViewProducer(appContext: Context) {
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
 
-                    currentWebView = webView
-
-                    //webViewViewModel.watchOnCurrentWebView (rawHtmlPage, webView, {closeWebViewAndSendRespond()} )
+                    drivingViewModel.watchWebView(webView, rawHtmlPage, urlQuery)
 
                     addJavascriptInterface(
                         WebPageInterface (onWebPageReceived = { html ->
