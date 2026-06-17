@@ -3,15 +3,9 @@ package com.example.jobaggregator.Parsers
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import android.view.ViewGroup
-import android.webkit.RenderProcessGoneDetail
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.jobaggregator.R
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -25,20 +19,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.example.jobaggregator.ViewModels.WebViewProducerViewModel
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaMaxParsedPagesInOnes
-import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -74,7 +61,7 @@ class RabotaUaParser @Inject constructor(context: Context,
         val baseQuery by remember { mutableStateOf<String>(rabotaUaUrl + "/zapros/smila" )}
 
         if (needToCheckPagesCount) {
-            webViewProducer.ProduseUserQuerry(baseQuery,{})
+            webViewProducer.ProduseUserQuerry(mutableListOf<String>(baseQuery),{renderedPagesList ->htmlStrRespond = renderedPagesList[0]})
             needToCheckPagesCount = false
         }
 
@@ -88,11 +75,8 @@ class RabotaUaParser @Inject constructor(context: Context,
             vacancyParsingStarted = true
         }
 
-
         //ATTENTION Allow to recompose here:
-        /*
         if (vacancyParsingStarted && !vacancyParsingFinished) {
-            //TODO Continuing to work here
 
                //Doing parsing according to
                when (pagesInRespond) {
@@ -104,7 +88,8 @@ class RabotaUaParser @Inject constructor(context: Context,
 
                    else -> NewParseSeveralPagesRespond(pagesInRespond, baseQuery, htmlStrRespond, {jobCardsParsedList ->jobsCardsList.addAll(jobCardsParsedList)})
                }
-           }*/
+           }
+
        }
 
 
@@ -251,34 +236,33 @@ class RabotaUaParser @Inject constructor(context: Context,
                                        returnParsedVacancies:(vacanciesList: MutableList<JobCard>)-> Unit,
                                        finishParsing:()-> Unit){
 
+        val jobVacancyFullQueryTemplate = "%s%s"
+
         var needToCollectVacanciesLinks by remember { mutableStateOf<Boolean>(true) }
-        var needToParseAllVacancies by remember { mutableStateOf<Boolean>(false) }
+        var needToStartParseAllVacancies by remember { mutableStateOf<Boolean>(false) }
         var parsingByPagesHasFinished by remember { mutableStateOf<Boolean>(false) }
         var parsingByJobCardsFinished by remember { mutableStateOf<Boolean>(false) }
 
-        val vacanciesQueryesList = remember { mutableStateListOf<String>() }
-        val vacanciesHtmlPagesList = remember { mutableStateListOf<String>() }
+        val vacanciesIdQueriesList = remember { mutableStateListOf<String>() }
+        val renderedHtmlPagesList = remember { mutableStateListOf<String>() }
 
         val foundedJobsCardsList = remember { mutableStateListOf<JobCard>() }
 
-        var parsingFunctionsAreRunning by remember { mutableStateOf<Int?>(null) }
-
         fun resetToDefault(){
             needToCollectVacanciesLinks = true
-            needToParseAllVacancies = false
+            needToStartParseAllVacancies = false
             parsingByPagesHasFinished = false
             parsingByJobCardsFinished = false
-            parsingFunctionsAreRunning = null
 
-            vacanciesQueryesList.clear()
-            vacanciesHtmlPagesList.clear()
+            vacanciesIdQueriesList.clear()
+            renderedHtmlPagesList.clear()
             foundedJobsCardsList.clear()
         }
 
         fun parseVacanciesJobCards() {
-            if (vacanciesHtmlPagesList.isNotEmpty()){
+            if (renderedHtmlPagesList.isNotEmpty()){
                 runCatching {
-                    vacanciesHtmlPagesList.forEach { htmlVacancy ->
+                    renderedHtmlPagesList.forEach { htmlVacancy ->
 
                         val vacancyJobCard = parseVacancyCard(htmlVacancy)
                         //Adding pared data to main container
@@ -313,48 +297,29 @@ class RabotaUaParser @Inject constructor(context: Context,
                     vacancyQuery = vacancy.child(0).attr("href")
 
                     if (!vacancyQuery.isBlank()) {
-                        vacanciesQueryesList.add(vacancyQuery)
+                        vacanciesIdQueriesList.add(String.format(jobVacancyFullQueryTemplate,rabotaUaUrl, vacancyQuery))
                     }
                 }
             }
 
             needToCollectVacanciesLinks = false
 
-            if (vacanciesQueryesList.isNotEmpty()){
-                needToParseAllVacancies = true
+            if (vacanciesIdQueriesList.isNotEmpty()){
+                needToStartParseAllVacancies = true
             }
         }
 
-        if (needToParseAllVacancies) {
-            //Changing from initial null to 0
-            parsingFunctionsAreRunning = (parsingFunctionsAreRunning ?:0)
+        if (needToStartParseAllVacancies) {
 
-            runCatching {
-                Column(modifier = Modifier.height(0.dp).width(0.dp)) {
-                    (vacanciesQueryesList).forEach { thisVacancyQuery ->
-                        parsingFunctionsAreRunning = parsingFunctionsAreRunning?.inc()
-
-                        val currentVacancyFullLink = rabotaUaUrl + thisVacancyQuery
-
-                        webViewProducer.ProduseUserQuerry (currentVacancyFullLink,{}
-                            /*{parsedVacancyPage->vacanciesHtmlPagesList.add(parsedVacancyPage);
-                                parsingFunctionsAreRunning = parsingFunctionsAreRunning?.dec();
-                                vacanciesQueryesList.remove(thisVacancyQuery)}*/)
-                    }
-                }
-
-            }.onFailure {
-                Toast.makeText(appContext, R.string.errorJobCardLoading, Toast.LENGTH_SHORT).show()
-            }
-
-            needToParseAllVacancies = false
+            //TODO Continuing working with this logic
+            webViewProducer.ProduseUserQuerry(vacanciesIdQueriesList, {renderedPagesList ->renderedHtmlPagesList.addAll(renderedPagesList) })
+            needToStartParseAllVacancies = false
         }
 
-        if (parsingFunctionsAreRunning == 0 && !needToParseAllVacancies) {
+        if (renderedHtmlPagesList.size == vacanciesIdQueriesList.size) {
             parseVacanciesJobCards()
-
-            parsingFunctionsAreRunning = null
         }
+
     }
 
     @Composable
@@ -401,7 +366,7 @@ class RabotaUaParser @Inject constructor(context: Context,
                         val currentQuery =
                             String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, pageIndex)
 
-                        webViewProducer.ProduseUserQuerry (currentQuery,{})
+                        webViewProducer.ProduseUserQuerry (mutableListOf(currentQuery),{})
                             /*{ parsedVacancyPage ->
                                 vacanciesMainPagesList.add(parsedVacancyPage);
                                 currentRunningParsingIndex = currentRunningParsingIndex.dec();

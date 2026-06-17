@@ -38,25 +38,26 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
 
     private var _checkerThread: Job? = null
 
-    val webViewsTabsFlow  = _webViewsQueriesList.asStateFlow()
+    public val webViewsTabsFlow  = _webViewsQueriesList.asStateFlow()
 
-    public fun addNewWebViewQuery(viewQuery: String){
-        _webViewsQueriesList.value.add(WebViewQueryItem(viewId = _viewsIdCounter.toString(), viewQuery = viewQuery))
-
-        _viewsIdCounter+=1
-    }
-
-    public fun watchWebView(currentView: WebView, currentViewHtmlPage: MutableState<String>, currentViewQuery: String ){
-        _webRunningViewsItemsList.add(WebViewItem(view = currentView, viewHtmlPage = currentViewHtmlPage, viewQuery = currentViewQuery))
-
-        if (_checkerThread==null){
-            runCheckerThread()
+    public fun addQueries(queriesList: List<String>){
+        queriesList.forEach { query->
+            _webViewsQueriesList.value.add(WebViewQueryItem(viewId = _viewsIdCounter.toString(), viewQuery = query))
+            _viewsIdCounter+=1
         }
     }
 
-    private fun runCheckerThread() {
+    public fun watchWebView(currentView: WebView, currentViewHtmlPage: MutableState<String>, currentViewQuery: String, viewRespond: () -> Unit ){
+        _webRunningViewsItemsList.add(WebViewItem(view = currentView, viewHtmlPage = currentViewHtmlPage, viewQuery = currentViewQuery, sendRenderedPageFromThisView = viewRespond))
+
+        if (_checkerThread==null){
+            _runCheckerThread()
+        }
+    }
+
+    private fun _runCheckerThread() {
         _checkerThread = CoroutineScope(Dispatchers.IO).launch {
-            val currentHtmlPage: String = ""
+
             while (_webRunningViewsItemsList.isNotEmpty()){
                 _webRunningViewsItemsList.forEach { currentWebViewItem ->
 
@@ -70,10 +71,13 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
                             }
                         }
 
+                        currentWebViewItem.sendRenderedPageFromThisView()
+
                         if (_webViewsQueriesList.value.size == 0){
                             //It means that all webViews were rendered
                             _viewsIdCounter = 0
 
+                            _checkerThread = null
                             Log.d("MyTag", "All Views were rendered")
                         }
 
@@ -133,4 +137,4 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
 
 data class WebViewQueryItem(val viewId: String, val viewQuery: String)
 
-data class WebViewItem(val view: WebView, val viewHtmlPage: MutableState<String>, val viewQuery: String)
+data class WebViewItem(val view: WebView, val viewHtmlPage: MutableState<String>, val viewQuery: String, val sendRenderedPageFromThisView:()-> Unit)

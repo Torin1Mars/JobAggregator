@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.jobaggregator.ViewModels.WebViewProducerViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,14 +31,16 @@ import kotlinx.coroutines.launch
 class RabotaUaWebViewProducer(appContext: Context) {
 
     @Composable
-    public fun ProduseUserQuerry(userQuery : String, additional:()-> Unit){
+    public fun ProduseUserQuerry(userQueriesList : List<String>, returnRenderedPages:(List<String>)-> Unit) {
 
         var queriesInsertedToViewModel by remember { mutableStateOf<Boolean>(false) }
         val producerViewModel :WebViewProducerViewModel = hiltViewModel()
         val queries by producerViewModel.webViewsTabsFlow.collectAsState()
 
+        val renderedHtmlPagesList = remember { mutableStateListOf<String>() }
+
         if (!queriesInsertedToViewModel){
-            producerViewModel.addNewWebViewQuery(userQuery)
+            producerViewModel.addQueries(userQueriesList)
             queriesInsertedToViewModel = true
         }
 
@@ -47,9 +48,15 @@ class RabotaUaWebViewProducer(appContext: Context) {
             queries.forEach { currentQuery ->
 
                 item(key = currentQuery.viewId) {
-                    GetParsedPage(currentQuery.viewQuery, producerViewModel,  {})
+                    GetParsedPage(currentQuery.viewQuery, producerViewModel,  {renderedPage-> renderedHtmlPagesList.add(renderedPage)})
                 }
             }
+        }
+
+        if (renderedHtmlPagesList.size == userQueriesList.size){
+            returnRenderedPages(renderedHtmlPagesList)
+
+            Log.d("MyTag", "Rendered pages have sent")
         }
 
     }
@@ -58,24 +65,19 @@ class RabotaUaWebViewProducer(appContext: Context) {
     @Composable
     private fun GetParsedPage(urlQuery: String, drivingViewModel : WebViewProducerViewModel, returnPageInRawHtml:(htmlString: String)-> Unit) {
 
-        val webViewViewModel: WebViewProducerViewModel = hiltViewModel()
-
         var rawHtmlPage = remember { mutableStateOf<String>("") }
         var currentWebView by remember { mutableStateOf<WebView?>(null) }
 
         val desktopUserAgent by remember { mutableStateOf<String>("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36") }
 
-        var pageHasBeenLoad by remember { mutableStateOf<Boolean>(false) }
-
-        fun closeWebViewAndSendRespond(){
+        fun closeThisWebViewAndSendRespond(){
             //Sending rendered page
             returnPageInRawHtml(rawHtmlPage.value)
 
-            Log.d("MyTag", "View was rendered")
+            Log.d("MyTag", "View was fully rendered")
 
             //Returning to default settings
             rawHtmlPage.value = ""
-            pageHasBeenLoad = false
 
             CoroutineScope(Dispatchers.Main).launch {
                 if (currentWebView != null){
@@ -91,6 +93,15 @@ class RabotaUaWebViewProducer(appContext: Context) {
                     currentWebView?.destroy()
                 }
             }
+
+            Log.d("MyTag", "View was cleaned")
+        }
+
+        fun closeThisWebViewAndSendRespondV2(){
+            //Sending rendered page
+            returnPageInRawHtml(rawHtmlPage.value)
+
+            Log.d("MyTag", "View was fully rendered")
         }
 
         //Parsing screen is running in hide mode
@@ -107,7 +118,7 @@ class RabotaUaWebViewProducer(appContext: Context) {
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
 
-                    drivingViewModel.watchWebView(webView, rawHtmlPage, urlQuery)
+                    drivingViewModel.watchWebView(webView, rawHtmlPage, urlQuery, {closeThisWebViewAndSendRespond()} )
 
                     addJavascriptInterface(
                         WebPageInterface (onWebPageReceived = { html ->
@@ -135,6 +146,8 @@ class RabotaUaWebViewProducer(appContext: Context) {
         @JavascriptInterface
         fun getHtml(page: String) {
             onWebPageReceived(page)
+
+            Log.d("MyTag", "View rendered" + page.toByteArray().size)
         }
     }
 
