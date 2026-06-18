@@ -68,10 +68,7 @@ class RabotaUaParser @Inject constructor(context: Context,
         if (!pagesCountChecked && !htmlStrRespond.isEmpty()) {
             pagesInRespond = getPagesCount(htmlStrRespond)
 
-            //TODO temporary
-            pagesInRespond = 1
-
-                pagesCountChecked = true
+            pagesCountChecked = true
             vacancyParsingStarted = true
         }
 
@@ -191,11 +188,11 @@ class RabotaUaParser @Inject constructor(context: Context,
                 parsingHasFinished = true
 
             }else{
-                Log.d("MyTag", "Starting next page")
-
                 Log.d("MyTag", "Jobcards : " + vacanciesJobCardsList.size.toString())
                 //Parsing Next Page
                 currentParsedPageIndex += 1
+
+                Log.d("MyTag", "Starting next page :")
 
                 Log.d("MyTag", "Parsed "+ currentParsedPageIndex)
                 currentParsedPage = vacanciesMainPagesList[currentParsedPageIndex]
@@ -214,7 +211,6 @@ class RabotaUaParser @Inject constructor(context: Context,
             startingParsingByPages = true
         }
 
-        //TODO Seams like we reaching 9 page and thread error appear here:
         if (startingParsingByPages){
             Log.d("MyTag", "Parsing main pages by Job Cards started")
             //Parsing page by page
@@ -280,7 +276,7 @@ class RabotaUaParser @Inject constructor(context: Context,
 
             Log.d("MyTag", "Page with vacancies has been parsed")
 
-            //This is upper hierarchy function
+            //This function sending parsed vacancies to upper hierarchy
             finishParsing()
         }
 
@@ -310,8 +306,7 @@ class RabotaUaParser @Inject constructor(context: Context,
         }
 
         if (needToStartParseAllVacancies) {
-
-            //TODO Continuing working with this logic
+            Log.d("MyTag", "Loading vacancies page started")
             webViewProducer.ProduseUserQuerry(vacanciesIdQueriesList, {renderedPagesList ->renderedHtmlPagesList.addAll(renderedPagesList) })
             needToStartParseAllVacancies = false
         }
@@ -326,71 +321,52 @@ class RabotaUaParser @Inject constructor(context: Context,
     fun CollectMainPages(totalPagesInRespond: Int, queryInitialLink: String,
                          returnParsedPages:(returningPagesList: List<String>)-> Unit) {
 
-        var templist = remember { MutableList(totalPagesInRespond){ "" }.toMutableStateList() }
+        val maximumParsingViews by remember { mutableStateOf<Int>(6) }
+        var runningRendersCounter by remember { mutableStateOf<Int>(0) }
 
-        var needToParse by remember { mutableStateOf<Boolean>(true) }
         val queryTemplate by remember { mutableStateOf<String>("%s/params;page=%d") }
         val vacanciesMainPagesList =  remember { mutableStateListOf<String>() }
 
-        var currentRunningParsingIndex by remember { mutableStateOf<Int>(0) }
-        var currentParsedPageIndex by remember { mutableStateOf<Int>(1) } //We are starting to collect main pages from second page
+        //Starting to collect main pages from second page
+        var lastRunningParsingIndex by remember { mutableStateOf<Int>(2) }
 
         fun resetValues(){
-            needToParse = false
             vacanciesMainPagesList.clear()
-            currentRunningParsingIndex = 0
-            currentParsedPageIndex = 1
+            runningRendersCounter = 0
+            lastRunningParsingIndex = 1
         }
 
         @Composable
         fun StartParsingNewPagesPull () {
-            /*LazyColumn(modifier = Modifier.height(1.dp).width(1.dp)) {
+            val currentPullQueriesList = mutableListOf<String>()
 
-                    items (count = templist.size, key = {pageIndex -> pageIndex }){pageIndex->
-                        val currentQuery = String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, pageIndex)
+            (1..maximumParsingViews).forEach {
+                if (lastRunningParsingIndex == totalPagesInRespond){
+                    //Do nothing
+                }else{
+                    val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
+                    currentPullQueriesList.add(pageQuery)
 
-                        Log.d("MyTag", "Querry sended " + pageIndex)
-                        GetOneParsedPage (currentQuery,
-                            {parsedVacancyPage->vacanciesMainPagesList.add(parsedVacancyPage);
-                                currentRunningParsingIndex = currentRunningParsingIndex.dec();
-                                Log.d("MyTag", "Parsed " + currentQuery)}
-                        )
-                    }
+                    runningRendersCounter ++
+                    lastRunningParsingIndex +=1
                 }
-            }*/
-
-            Column(modifier = Modifier.height(0.dp).width(0.dp)) {
-                thismainloop@ for (pageIndex in currentParsedPageIndex + 1..totalPagesInRespond) {
-
-                    if (currentRunningParsingIndex < rabotaUaMaxParsedPagesInOnes) {
-                        val currentQuery =
-                            String.format(locale = Locale.US, format = queryTemplate, queryInitialLink, pageIndex)
-
-                        webViewProducer.ProduseUserQuerry (mutableListOf(currentQuery),{})
-                            /*{ parsedVacancyPage ->
-                                vacanciesMainPagesList.add(parsedVacancyPage);
-                                currentRunningParsingIndex = currentRunningParsingIndex.dec();
-                                Log.d("MyTag", "Parsed " + currentQuery)
-                            }
-                        )*/
-
-                        currentParsedPageIndex = currentParsedPageIndex.inc()
-                        currentRunningParsingIndex = currentRunningParsingIndex.inc()
-                    } else {
-                        break@thismainloop
-                    }
-                }
-
             }
+
+            webViewProducer.ProduseUserQuerry(currentPullQueriesList, {renderedPagesList ->vacanciesMainPagesList.addAll(renderedPagesList);
+                runningRendersCounter = 0})
+
+
+            //TODO Continuing to work here
+            Log.d("MyTag", "New pull has started")
         }
 
 
-        if (needToParse && currentRunningParsingIndex == 0 && vacanciesMainPagesList.size != totalPagesInRespond ){
+        if (vacanciesMainPagesList.size != totalPagesInRespond && runningRendersCounter == 0){
             StartParsingNewPagesPull()
         }
 
-        if (currentRunningParsingIndex == 0 && vacanciesMainPagesList.size == totalPagesInRespond-1 ){
-          //Parsing has finished
+        if (lastRunningParsingIndex == 0 && vacanciesMainPagesList.size == totalPagesInRespond-1 ){
+            //Parsing has finished
             returnParsedPages (vacanciesMainPagesList)
 
             resetValues()

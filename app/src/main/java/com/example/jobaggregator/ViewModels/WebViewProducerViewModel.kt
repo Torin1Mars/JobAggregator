@@ -47,25 +47,30 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
         }
     }
 
-    public fun watchWebView(currentView: WebView, currentViewHtmlPage: MutableState<String>, currentViewQuery: String, viewRespond: () -> Unit ){
-        _webRunningViewsItemsList.add(WebViewItem(view = currentView, viewHtmlPage = currentViewHtmlPage, viewQuery = currentViewQuery, sendRenderedPageFromThisView = viewRespond))
+    public fun watchWebView(currentView: WebView, currentViewHtmlPage: MutableState<String>, currentViewQuery: String, sendViewRespond: () -> Unit ){
+        _webRunningViewsItemsList.add(WebViewItem(view = currentView, viewHtmlPage = currentViewHtmlPage, viewQuery = currentViewQuery, sendRenderedPageFromThisView = sendViewRespond))
 
         if (_checkerThread==null){
-            _runCheckerThread()
+            _runNewCheckerThread()
         }
+
     }
 
-    private fun _runCheckerThread() {
+    private fun _runNewCheckerThread() {
         _checkerThread = CoroutineScope(Dispatchers.IO).launch {
 
             while (_webRunningViewsItemsList.isNotEmpty()){
-                _webRunningViewsItemsList.forEach { currentWebViewItem ->
+
+                val runningViewsSimpleList = _webRunningViewsItemsList.toList()
+
+                runningViewsSimpleList.forEach { currentWebViewItem ->
 
                     if (currentWebViewItem.viewHtmlPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize){
-                        //it means that our html Page was completely rendered
+                        //It means that our html Page was completely rendered
                         _webRunningViewsItemsList.remove(currentWebViewItem)
 
-                        _webViewsQueriesList.value.forEach { webViewQuerry->
+                        val viewsQueriesSimpleList = _webViewsQueriesList.value.toList()
+                        viewsQueriesSimpleList.forEach { webViewQuerry->
                             if (webViewQuerry.viewQuery==currentWebViewItem.viewQuery){
                                 _webViewsQueriesList.value.remove(webViewQuerry)
                             }
@@ -95,42 +100,6 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
         _webViewsQueriesList.value = _webViewsQueriesList.value.filter{it.viewId != viewId}.toMutableStateList()
     }
 
-    /*internal data class PairedWebView(val viewRenderingPage: MutableState<String>, val currentWebView: WebView, val closeThisView:()-> Unit)
-
-
-    private val runningViewsWithPagesList = mutableStateListOf<PairedWebView>()
-    private val queriesList = mutableStateListOf<String>()
-    private var checkerThread by mutableStateOf<Job?>(null)
-
-    public fun watchOnCurrentWebView(htmlPage: MutableState<String>, webView: WebView?, closeThisView:()-> Unit) {
-        webView.let { it -> runningViewsWithPagesList.add(PairedWebView(htmlPage, it!!, closeThisView )) }
-
-        runCheckerThread()
-    }
-
-    private fun runCheckerThread() {
-        if (checkerThread == null){
-
-            val checkerThread = viewModelScope.launch {
-                withContext(Dispatchers.IO) {
-
-                    //Checking loading progress
-                    while (runningViewsWithPagesList.isNotEmpty()) {
-
-                        //Here we're checking all active views if they completely finished their renders
-                        runningViewsWithPagesList.forEach { it ->
-                            if (it.viewRenderingPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize) {
-                                it.closeThisView()
-                                runningViewsWithPagesList.remove(it)
-                            }
-                        }
-
-                        delay(100L)
-                    }
-                }
-            }
-        }
-    }*/
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////

@@ -74,8 +74,6 @@ class RabotaUaWebViewProducer(appContext: Context) {
             //Sending rendered page
             returnPageInRawHtml(rawHtmlPage.value)
 
-            Log.d("MyTag", "View was fully rendered")
-
             //Returning to default settings
             rawHtmlPage.value = ""
 
@@ -97,12 +95,13 @@ class RabotaUaWebViewProducer(appContext: Context) {
             Log.d("MyTag", "View was cleaned")
         }
 
+        /*
         fun closeThisWebViewAndSendRespondV2(){
             //Sending rendered page
             returnPageInRawHtml(rawHtmlPage.value)
 
             Log.d("MyTag", "View was fully rendered")
-        }
+        }*/
 
         //Parsing screen is running in hide mode
         Box(modifier = Modifier.height(0.dp).width(0.dp)) {
@@ -112,8 +111,6 @@ class RabotaUaWebViewProducer(appContext: Context) {
 
                 webView.apply {
                     settings.userAgentString = desktopUserAgent
-
-                    Log.d("MyTag", "View started")
 
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
@@ -146,8 +143,6 @@ class RabotaUaWebViewProducer(appContext: Context) {
         @JavascriptInterface
         fun getHtml(page: String) {
             onWebPageReceived(page)
-
-            Log.d("MyTag", "View rendered" + page.toByteArray().size)
         }
     }
 

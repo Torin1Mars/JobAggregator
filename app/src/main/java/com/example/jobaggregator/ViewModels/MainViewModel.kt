@@ -52,5 +52,4 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
         return databaseJobCardList
     }
 
-
 }
