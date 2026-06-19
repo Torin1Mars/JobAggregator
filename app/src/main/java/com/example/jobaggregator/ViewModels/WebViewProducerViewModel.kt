@@ -20,10 +20,8 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.toMutableStateList
-import io.ktor.client.plugins.websocket.WebSockets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 @HiltViewModel
@@ -34,8 +32,13 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
     private var _viewsIdCounter: Int = 0
 
     private val _webViewsQueriesList = MutableStateFlow(mutableListOf<WebViewQueryItem>())
-    private val _webRunningViewsItemsList = mutableStateListOf<WebViewItem>()
 
+    private val _webRunningViewsItemsList = mutableStateListOf<WebViewItem>()
+    private val _fullyRenderedViewsList  = mutableStateListOf<WebViewItem>()
+    public var fullyRenderedPagesList  = mutableListOf<String>()
+    public var renderingHasFinished by mutableStateOf<Boolean>(false)
+
+    private var _checkingIsRunning by mutableStateOf<Boolean>(false)
     private var _checkerThread: Job? = null
 
     public val webViewsTabsFlow  = _webViewsQueriesList.asStateFlow()
@@ -47,18 +50,19 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
         }
     }
 
-    public fun watchWebView(currentView: WebView, currentViewHtmlPage: MutableState<String>, currentViewQuery: String, sendViewRespond: () -> Unit ){
-        _webRunningViewsItemsList.add(WebViewItem(view = currentView, viewHtmlPage = currentViewHtmlPage, viewQuery = currentViewQuery, sendRenderedPageFromThisView = sendViewRespond))
+    public fun watchWebView(currentView: WebView, viewQuery : String, viewHtmlPage : MutableState<String>, closeThisView: () -> Unit ){
+        _webRunningViewsItemsList.add(WebViewItem(view = currentView, viewSearchingQuery = viewQuery, viewHtmlPage = viewHtmlPage, closeThisView = closeThisView))
 
-        if (_checkerThread==null){
+        if (!_checkingIsRunning){
+            _checkingIsRunning = true
             _runNewCheckerThread()
         }
-
     }
 
     private fun _runNewCheckerThread() {
         _checkerThread = CoroutineScope(Dispatchers.IO).launch {
 
+            /*
             while (_webRunningViewsItemsList.isNotEmpty()){
 
                 val runningViewsSimpleList = _webRunningViewsItemsList.toList()
@@ -83,21 +87,49 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
                             _viewsIdCounter = 0
 
                             _checkerThread = null
-                            Log.d("MyTag", "All Views were rendered")
                         }
 
                     }
                 }
 
                 delay(100L)
+            }*/
+
+            while (_checkingIsRunning){
+
+                _webRunningViewsItemsList.forEach { webViewItem->
+                    if (webViewItem.viewHtmlPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize){
+
+                        if (webViewItem in _fullyRenderedViewsList) {
+                            _fullyRenderedViewsList.add(webViewItem)
+                        }
+                    }
+                }
+
+                if (_fullyRenderedViewsList.size == _webRunningViewsItemsList.size){
+                    //It means that all our views have been rendered
+                    Log.d("MyTag", "Here")
+
+                    _fullyRenderedViewsList.forEach { webViewItem ->
+                        fullyRenderedPagesList.add(webViewItem.viewHtmlPage.value)
+                    }
+
+                    _webRunningViewsItemsList.forEach { workingWebView->
+                        workingWebView.closeThisView()
+                    }
+
+                    //Resetting to default values
+
+                    _webViewsQueriesList.value.clear()
+                    _webRunningViewsItemsList.clear()
+
+                    _checkingIsRunning = false
+                    renderingHasFinished = true
+                }
+
+                delay(100L)
             }
         }
-
-    }
-
-    public fun closeView(viewId: String){
-        //It's remove current element from common collection
-        _webViewsQueriesList.value = _webViewsQueriesList.value.filter{it.viewId != viewId}.toMutableStateList()
     }
 
 }
@@ -106,4 +138,4 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
 
 data class WebViewQueryItem(val viewId: String, val viewQuery: String)
 
-data class WebViewItem(val view: WebView, val viewHtmlPage: MutableState<String>, val viewQuery: String, val sendRenderedPageFromThisView:()-> Unit)
+data class WebViewItem(val view: WebView ,val viewSearchingQuery: String,  val viewHtmlPage: MutableState<String>, val closeThisView:()-> Unit)

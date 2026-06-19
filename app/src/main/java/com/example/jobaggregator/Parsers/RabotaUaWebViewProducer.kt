@@ -34,10 +34,12 @@ class RabotaUaWebViewProducer(appContext: Context) {
     public fun ProduseUserQuerry(userQueriesList : List<String>, returnRenderedPages:(List<String>)-> Unit) {
 
         var queriesInsertedToViewModel by remember { mutableStateOf<Boolean>(false) }
+
         val producerViewModel :WebViewProducerViewModel = hiltViewModel()
         val queries by producerViewModel.webViewsTabsFlow.collectAsState()
 
-        val renderedHtmlPagesList = remember { mutableStateListOf<String>() }
+        val fullyRenderedHtmlPagesList = remember { mutableStateListOf<String>() }
+
 
         if (!queriesInsertedToViewModel){
             producerViewModel.addQueries(userQueriesList)
@@ -48,22 +50,25 @@ class RabotaUaWebViewProducer(appContext: Context) {
             queries.forEach { currentQuery ->
 
                 item(key = currentQuery.viewId) {
-                    GetParsedPage(currentQuery.viewQuery, producerViewModel,  {renderedPage-> renderedHtmlPagesList.add(renderedPage)})
+                   GetParsedPage(currentQuery.viewQuery, producerViewModel)
                 }
             }
         }
 
-        if (renderedHtmlPagesList.size == userQueriesList.size){
-            returnRenderedPages(renderedHtmlPagesList)
+        if (producerViewModel.renderingHasFinished){
+            fullyRenderedHtmlPagesList.addAll(producerViewModel.fullyRenderedPagesList)
+            returnRenderedPages(fullyRenderedHtmlPagesList)
+            Log.d("MyTag", "Fully rendered pages have sent back " + fullyRenderedHtmlPagesList.size)
 
-            Log.d("MyTag", "Rendered pages have sent")
+
+            producerViewModel.fullyRenderedPagesList.clear()
+            producerViewModel.renderingHasFinished = false
         }
 
     }
 
-
     @Composable
-    private fun GetParsedPage(urlQuery: String, drivingViewModel : WebViewProducerViewModel, returnPageInRawHtml:(htmlString: String)-> Unit) {
+    private fun GetParsedPage(urlQuery: String, drivingViewModel : WebViewProducerViewModel) {
 
         var rawHtmlPage = remember { mutableStateOf<String>("") }
         var currentWebView by remember { mutableStateOf<WebView?>(null) }
@@ -72,7 +77,7 @@ class RabotaUaWebViewProducer(appContext: Context) {
 
         fun closeThisWebViewAndSendRespond(){
             //Sending rendered page
-            returnPageInRawHtml(rawHtmlPage.value)
+            //returnPageInRawHtml(rawHtmlPage.value)
 
             //Returning to default settings
             rawHtmlPage.value = ""
@@ -95,13 +100,27 @@ class RabotaUaWebViewProducer(appContext: Context) {
             Log.d("MyTag", "View was cleaned")
         }
 
-        /*
-        fun closeThisWebViewAndSendRespondV2(){
-            //Sending rendered page
-            returnPageInRawHtml(rawHtmlPage.value)
+        fun closeThisWebView(){
+            //Returning to default settings
+            rawHtmlPage.value = ""
 
-            Log.d("MyTag", "View was fully rendered")
-        }*/
+            CoroutineScope(Dispatchers.Main).launch {
+                if (currentWebView != null){
+                    //(currentWebView!!.parent as? ViewGroup)?.removeView(currentWebView)
+
+                    currentWebView?.apply {
+                        stopLoading()
+                        clearHistory()
+                        removeAllViews()
+                        webChromeClient = null
+                    }
+
+                    currentWebView?.destroy()
+                }
+            }
+
+            Log.d("MyTag", "View was cleaned")
+        }
 
         //Parsing screen is running in hide mode
         Box(modifier = Modifier.height(0.dp).width(0.dp)) {
@@ -115,7 +134,7 @@ class RabotaUaWebViewProducer(appContext: Context) {
                     settings.useWideViewPort = true
                     settings.javaScriptEnabled = true
 
-                    drivingViewModel.watchWebView(webView, rawHtmlPage, urlQuery, {closeThisWebViewAndSendRespond()} )
+                    drivingViewModel.watchWebView(webView, urlQuery, rawHtmlPage, {closeThisWebView()} )
 
                     addJavascriptInterface(
                         WebPageInterface (onWebPageReceived = { html ->
@@ -137,12 +156,15 @@ class RabotaUaWebViewProducer(appContext: Context) {
                 }
             })
         }
+
     }
 
     private inner class WebPageInterface(private val onWebPageReceived: (String) -> Unit) {
         @JavascriptInterface
         fun getHtml(page: String) {
             onWebPageReceived(page)
+
+            Log.d("MyTag", "Page was rendered " + page.toByteArray().size.toString())
         }
     }
 

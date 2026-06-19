@@ -344,20 +344,24 @@ class RabotaUaParser @Inject constructor(context: Context,
                 if (lastRunningParsingIndex == totalPagesInRespond){
                     //Do nothing
                 }else{
+                    Log.d("MyTag", "New view has started !" + lastRunningParsingIndex)
+
                     val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
                     currentPullQueriesList.add(pageQuery)
 
                     runningRendersCounter ++
-                    lastRunningParsingIndex +=1
+                    lastRunningParsingIndex ++
                 }
             }
 
+            //Sending queries to rendering
             webViewProducer.ProduseUserQuerry(currentPullQueriesList, {renderedPagesList ->vacanciesMainPagesList.addAll(renderedPagesList);
                 runningRendersCounter = 0})
 
+            //Clearing initial queries list
+            currentPullQueriesList.clear()
 
-            //TODO Continuing to work here
-            Log.d("MyTag", "New pull has started")
+            Log.d("MyTag", "New pull has started " + lastRunningParsingIndex)
         }
 
 
