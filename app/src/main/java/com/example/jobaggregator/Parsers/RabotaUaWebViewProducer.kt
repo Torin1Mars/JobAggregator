@@ -3,15 +3,18 @@ package com.example.jobaggregator.Parsers
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -22,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.jobaggregator.ViewModels.WebViewProducerViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,38 +37,62 @@ class RabotaUaWebViewProducer(appContext: Context) {
     @Composable
     public fun ProduseUserQuerry(userQueriesList : List<String>, returnRenderedPages:(List<String>)-> Unit) {
 
-        var queriesInsertedToViewModel by remember { mutableStateOf<Boolean>(false) }
+        var queriesWasInsertedToViewModel by remember { mutableStateOf<Boolean>(false) }
 
         val producerViewModel :WebViewProducerViewModel = hiltViewModel()
-        val queries by producerViewModel.webViewsTabsFlow.collectAsState()
+        val queries by producerViewModel.webViewsTabsFlow.collectAsStateWithLifecycle()
 
         val fullyRenderedHtmlPagesList = remember { mutableStateListOf<String>() }
 
-
-        if (!queriesInsertedToViewModel){
-            producerViewModel.addQueries(userQueriesList)
-            queriesInsertedToViewModel = true
-        }
-
-        LazyColumn(modifier = Modifier.height(0.dp).width(0.dp)) {
-            queries.forEach { currentQuery ->
-
-                item(key = currentQuery.viewId) {
-                   GetParsedPage(currentQuery.viewQuery, producerViewModel)
-                }
-            }
-        }
-
-        if (producerViewModel.renderingHasFinished){
+        fun finishCurrentParsing(){
             fullyRenderedHtmlPagesList.addAll(producerViewModel.fullyRenderedPagesList)
             returnRenderedPages(fullyRenderedHtmlPagesList)
             Log.d("MyTag", "Fully rendered pages have sent back " + fullyRenderedHtmlPagesList.size)
 
+            fullyRenderedHtmlPagesList.clear()
 
             producerViewModel.fullyRenderedPagesList.clear()
             producerViewModel.renderingHasFinished = false
+
+            queriesWasInsertedToViewModel = false
         }
 
+        if (!queriesWasInsertedToViewModel){
+            producerViewModel.addQueries(userQueriesList)
+            queriesWasInsertedToViewModel = true
+
+            producerViewModel.finisherParsing = {finishCurrentParsing()}
+
+            Log.d("MyTag", queries.toString())
+
+            runWebViewViews()
+        }
+
+        /*if (producerViewModel.renderingHasFinished){
+            fullyRenderedHtmlPagesList.addAll(producerViewModel.fullyRenderedPagesList)
+            returnRenderedPages(fullyRenderedHtmlPagesList)
+            Log.d("MyTag", "Fully rendered pages have sent back " + fullyRenderedHtmlPagesList.size)
+
+            fullyRenderedHtmlPagesList.clear()
+
+            producerViewModel.fullyRenderedPagesList.clear()
+            producerViewModel.renderingHasFinished = false
+
+            queriesWasInsertedToViewModel = false
+        }*/
+    }
+
+    @Composable
+    fun runWebViewViews(ViewsQueries :){
+        LazyColumn(modifier = Modifier.height(0.dp).width(0.dp)) {
+            queries.forEach { currentQuery ->
+                Log.d("MyTag", "Column started")
+
+                item(key = currentQuery.viewId) {
+                    GetParsedPage(currentQuery.viewQuery, producerViewModel)
+                }
+            }
+        }
     }
 
     @Composable
@@ -101,12 +129,9 @@ class RabotaUaWebViewProducer(appContext: Context) {
         }
 
         fun closeThisWebView(){
-            //Returning to default settings
-            rawHtmlPage.value = ""
-
             CoroutineScope(Dispatchers.Main).launch {
                 if (currentWebView != null){
-                    //(currentWebView!!.parent as? ViewGroup)?.removeView(currentWebView)
+                    (currentWebView!!.parent as? ViewGroup)?.removeView(currentWebView)
 
                     currentWebView?.apply {
                         stopLoading()
@@ -142,6 +167,8 @@ class RabotaUaWebViewProducer(appContext: Context) {
                         "AndroidInterface"
                     )
 
+                    Log.d("MyTag", "View was started")
+
                     webViewClient = object : WebViewClient() {
 
                         @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -153,6 +180,8 @@ class RabotaUaWebViewProducer(appContext: Context) {
                     }
 
                     loadUrl(urlQuery)
+
+                    Log.d("MyTag", "View started")
                 }
             })
         }

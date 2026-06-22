@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,9 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
     private val _webRunningViewsItemsList = mutableStateListOf<WebViewItem>()
     private val _fullyRenderedViewsList  = mutableStateListOf<WebViewItem>()
     public var fullyRenderedPagesList  = mutableListOf<String>()
-    public var renderingHasFinished by mutableStateOf<Boolean>(false)
+    public var renderingHasFinished by  mutableStateOf<Boolean>(false)
+
+    public var finisherParsing:()-> Unit = {}
 
     private var _checkingIsRunning by mutableStateOf<Boolean>(false)
     private var _checkerThread: Job? = null
@@ -101,6 +104,8 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
                     if (webViewItem.viewHtmlPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize){
 
                         if (webViewItem in _fullyRenderedViewsList) {
+                            //Do nothing, it means that we need to skip it
+                        }else{
                             _fullyRenderedViewsList.add(webViewItem)
                         }
                     }
@@ -108,8 +113,6 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
 
                 if (_fullyRenderedViewsList.size == _webRunningViewsItemsList.size){
                     //It means that all our views have been rendered
-                    Log.d("MyTag", "Here")
-
                     _fullyRenderedViewsList.forEach { webViewItem ->
                         fullyRenderedPagesList.add(webViewItem.viewHtmlPage.value)
                     }
@@ -120,11 +123,17 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
 
                     //Resetting to default values
 
+                    _fullyRenderedViewsList.clear()
                     _webViewsQueriesList.value.clear()
                     _webRunningViewsItemsList.clear()
 
                     _checkingIsRunning = false
                     renderingHasFinished = true
+
+                    //Finishing in upper hierarchy function
+                    finisherParsing()
+
+                    Log.d("MyTag", "Pages in watch thread " + fullyRenderedPagesList.size.toString())
                 }
 
                 delay(100L)

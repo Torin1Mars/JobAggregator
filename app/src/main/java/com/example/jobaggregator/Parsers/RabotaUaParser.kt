@@ -321,7 +321,7 @@ class RabotaUaParser @Inject constructor(context: Context,
     fun CollectMainPages(totalPagesInRespond: Int, queryInitialLink: String,
                          returnParsedPages:(returningPagesList: List<String>)-> Unit) {
 
-        val maximumParsingViews by remember { mutableStateOf<Int>(6) }
+        val maximumParsingViews by remember { mutableStateOf<Int>(4) }
         var runningRendersCounter by remember { mutableStateOf<Int>(0) }
 
         val queryTemplate by remember { mutableStateOf<String>("%s/params;page=%d") }
@@ -340,7 +340,13 @@ class RabotaUaParser @Inject constructor(context: Context,
         fun StartParsingNewPagesPull () {
             val currentPullQueriesList = mutableListOf<String>()
 
-            (1..maximumParsingViews).forEach {
+            val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
+            currentPullQueriesList.add(pageQuery)
+
+            Log.d("MyTag", pageQuery)
+
+            /*(1..maximumParsingViews).forEach {
+
                 if (lastRunningParsingIndex == totalPagesInRespond){
                     //Do nothing
                 }else{
@@ -352,18 +358,20 @@ class RabotaUaParser @Inject constructor(context: Context,
                     runningRendersCounter ++
                     lastRunningParsingIndex ++
                 }
-            }
+            }*/
+
+            Log.d("MyTag", "New pull has started " + lastRunningParsingIndex)
 
             //Sending queries to rendering
             webViewProducer.ProduseUserQuerry(currentPullQueriesList, {renderedPagesList ->vacanciesMainPagesList.addAll(renderedPagesList);
                 runningRendersCounter = 0})
 
+            runningRendersCounter = 1
+            lastRunningParsingIndex+=1
+
             //Clearing initial queries list
             currentPullQueriesList.clear()
-
-            Log.d("MyTag", "New pull has started " + lastRunningParsingIndex)
         }
-
 
         if (vacanciesMainPagesList.size != totalPagesInRespond && runningRendersCounter == 0){
             StartParsingNewPagesPull()
