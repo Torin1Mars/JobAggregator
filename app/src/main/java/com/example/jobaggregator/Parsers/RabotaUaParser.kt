@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +37,6 @@ class RabotaUaParser @Inject constructor(context: Context,
                                          rabotaUaViewModel: WebViewProducerViewModel) {
 
     val appContext = context
-    val webViewProducer = RabotaUaWebViewProducer(appContext)
 
     private val jobQueryTemplate = "%s/%s/"
 
@@ -59,6 +59,8 @@ class RabotaUaParser @Inject constructor(context: Context,
         var pagesInRespond: Int by rememberSaveable { mutableStateOf<Int>(0) }
 
         val baseQuery by remember { mutableStateOf<String>(rabotaUaUrl + "/zapros/smila" )}
+
+        val webViewProducer = RabotaUaWebViewProducer(appContext)
 
         if (needToCheckPagesCount) {
             webViewProducer.ProduseUserQuerry(mutableListOf<String>(baseQuery),{renderedPagesList ->htmlStrRespond = renderedPagesList[0]})
@@ -244,6 +246,8 @@ class RabotaUaParser @Inject constructor(context: Context,
 
         val foundedJobsCardsList = remember { mutableStateListOf<JobCard>() }
 
+        val webViewProducer = RabotaUaWebViewProducer(appContext)
+
         fun resetToDefault(){
             needToCollectVacanciesLinks = true
             needToStartParseAllVacancies = false
@@ -321,6 +325,8 @@ class RabotaUaParser @Inject constructor(context: Context,
     fun CollectMainPages(totalPagesInRespond: Int, queryInitialLink: String,
                          returnParsedPages:(returningPagesList: List<String>)-> Unit) {
 
+        val webViewProducer = remember { RabotaUaWebViewProducer(appContext)}
+
         val maximumParsingViews by remember { mutableStateOf<Int>(4) }
         var runningRendersCounter by remember { mutableStateOf<Int>(0) }
 
@@ -343,14 +349,12 @@ class RabotaUaParser @Inject constructor(context: Context,
             val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
             currentPullQueriesList.add(pageQuery)
 
-            Log.d("MyTag", pageQuery)
-
-            /*(1..maximumParsingViews).forEach {
+            (1..maximumParsingViews).forEach {
 
                 if (lastRunningParsingIndex == totalPagesInRespond){
                     //Do nothing
                 }else{
-                    Log.d("MyTag", "New view has started !" + lastRunningParsingIndex)
+                    Log.d("MyTag", "New query was added to queue" + lastRunningParsingIndex)
 
                     val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
                     currentPullQueriesList.add(pageQuery)
@@ -358,7 +362,7 @@ class RabotaUaParser @Inject constructor(context: Context,
                     runningRendersCounter ++
                     lastRunningParsingIndex ++
                 }
-            }*/
+            }
 
             Log.d("MyTag", "New pull has started " + lastRunningParsingIndex)
 
