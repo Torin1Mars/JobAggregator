@@ -6,30 +6,21 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.example.jobaggregator.R
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateList
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.example.jobaggregator.ViewModels.WebViewProducerViewModel
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
-import com.example.jobaggregator.supportingData.rabotaUaMaxParsedPagesInOnes
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import javax.inject.Inject
 
 
@@ -325,68 +316,69 @@ class RabotaUaParser @Inject constructor(context: Context,
     fun CollectMainPages(totalPagesInRespond: Int, queryInitialLink: String,
                          returnParsedPages:(returningPagesList: List<String>)-> Unit) {
 
-        val webViewProducer = remember { RabotaUaWebViewProducer(appContext)}
+        val webViewProducer = remember { RabotaUaWebViewProducer(appContext) }
 
         val maximumParsingViews by remember { mutableStateOf<Int>(4) }
-        var runningRendersCounter by remember { mutableStateOf<Int>(0) }
+        var rendersAreRunning by remember { mutableStateOf<Boolean>(false) }
 
         val queryTemplate by remember { mutableStateOf<String>("%s/params;page=%d") }
-        val vacanciesMainPagesList =  remember { mutableStateListOf<String>() }
+        val vacanciesMainPagesList = remember { mutableStateListOf<String>() }
+
+        val tempList = remember { mutableStateListOf<String>() }
 
         //Starting to collect main pages from second page
         var lastRunningParsingIndex by remember { mutableStateOf<Int>(2) }
 
-        fun resetValues(){
+        fun resetValues() {
             vacanciesMainPagesList.clear()
-            runningRendersCounter = 0
+            rendersAreRunning = false
             lastRunningParsingIndex = 1
         }
 
         @Composable
-        fun StartParsingNewPagesPull () {
+        fun StartParsingNewPagesPull() {
             val currentPullQueriesList = mutableListOf<String>()
 
-            val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
-            currentPullQueriesList.add(pageQuery)
+            (0..maximumParsingViews).forEach {
 
-            (1..maximumParsingViews).forEach {
-
-                if (lastRunningParsingIndex == totalPagesInRespond){
+                if (lastRunningParsingIndex > totalPagesInRespond) {
                     //Do nothing
-                }else{
+                } else {
                     Log.d("MyTag", "New query was added to queue" + lastRunningParsingIndex)
 
                     val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
+                    tempList.add(pageQuery)
+
                     currentPullQueriesList.add(pageQuery)
 
-                    runningRendersCounter ++
-                    lastRunningParsingIndex ++
+                    lastRunningParsingIndex++
                 }
             }
 
-            Log.d("MyTag", "New pull has started " + lastRunningParsingIndex)
-
             //Sending queries to rendering
-            webViewProducer.ProduseUserQuerry(currentPullQueriesList, {renderedPagesList ->vacanciesMainPagesList.addAll(renderedPagesList);
-                runningRendersCounter = 0})
+            if (currentPullQueriesList.isNotEmpty()) {
+                webViewProducer.ProduseUserQuerry(currentPullQueriesList, { renderedPagesList ->
+                    vacanciesMainPagesList.addAll(renderedPagesList);
+                    rendersAreRunning = false
+                })
 
-            runningRendersCounter = 1
-            lastRunningParsingIndex+=1
-
-            //Clearing initial queries list
-            currentPullQueriesList.clear()
+                rendersAreRunning = true
+                Log.d("MyTag", "New pull has started " + lastRunningParsingIndex)
+            }
         }
 
-        if (vacanciesMainPagesList.size != totalPagesInRespond && runningRendersCounter == 0){
+        if (!rendersAreRunning && lastRunningParsingIndex < totalPagesInRespond) {
             StartParsingNewPagesPull()
         }
 
-        if (lastRunningParsingIndex == 0 && vacanciesMainPagesList.size == totalPagesInRespond-1 ){
+
+        if (lastRunningParsingIndex > totalPagesInRespond && !rendersAreRunning) {
             //Parsing has finished
-            returnParsedPages (vacanciesMainPagesList)
+            returnParsedPages(vacanciesMainPagesList)
 
             resetValues()
         }
     }
+
 
 }

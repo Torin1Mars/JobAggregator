@@ -64,40 +64,6 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
 
     private fun _runNewCheckerThread() {
         _checkerThread = CoroutineScope(Dispatchers.IO).launch {
-
-            /*
-            while (_webRunningViewsItemsList.isNotEmpty()){
-
-                val runningViewsSimpleList = _webRunningViewsItemsList.toList()
-
-                runningViewsSimpleList.forEach { currentWebViewItem ->
-
-                    if (currentWebViewItem.viewHtmlPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize){
-                        //It means that our html Page was completely rendered
-                        _webRunningViewsItemsList.remove(currentWebViewItem)
-
-                        val viewsQueriesSimpleList = _webViewsQueriesList.value.toList()
-                        viewsQueriesSimpleList.forEach { webViewQuerry->
-                            if (webViewQuerry.viewQuery==currentWebViewItem.viewQuery){
-                                _webViewsQueriesList.value.remove(webViewQuerry)
-                            }
-                        }
-
-                        currentWebViewItem.sendRenderedPageFromThisView()
-
-                        if (_webViewsQueriesList.value.size == 0){
-                            //It means that all webViews were rendered
-                            _viewsIdCounter = 0
-
-                            _checkerThread = null
-                        }
-
-                    }
-                }
-
-                delay(100L)
-            }*/
-
             while (_checkingIsRunning){
 
                 _webRunningViewsItemsList.forEach { webViewItem->
@@ -136,7 +102,7 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
                     Log.d("MyTag", "Pages in watch thread " + fullyRenderedPagesList.size.toString())
                 }
 
-                delay(100L)
+                delay(200L)
             }
         }
     }
