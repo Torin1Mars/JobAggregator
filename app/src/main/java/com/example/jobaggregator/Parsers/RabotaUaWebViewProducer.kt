@@ -112,8 +112,6 @@ class RabotaUaWebViewProducer(appContext: Context) {
                     currentWebView?.destroy()
                 }
             }
-
-            Log.d("MyTag", "View was cleaned")
         }
 
         //Parsing screen is running in hide mode
@@ -136,8 +134,6 @@ class RabotaUaWebViewProducer(appContext: Context) {
                         "AndroidInterface"
                     )
 
-                    Log.d("MyTag", "View was started")
-
                     webViewClient = object : WebViewClient() {
 
                         @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -149,8 +145,6 @@ class RabotaUaWebViewProducer(appContext: Context) {
                     }
 
                     loadUrl(urlQuery)
-
-                    Log.d("MyTag", "View started")
                 }
             })
         }

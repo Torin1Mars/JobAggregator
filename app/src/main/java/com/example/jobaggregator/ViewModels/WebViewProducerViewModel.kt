@@ -1,14 +1,12 @@
 package com.example.jobaggregator.ViewModels
 
 import android.content.Context
-import android.util.Log
 import android.webkit.WebView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.domain.JobsDbDao
 import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,11 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.toMutableStateList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -98,8 +93,6 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
 
                     //Finishing in upper hierarchy function
                     finisherParsing()
-
-                    Log.d("MyTag", "Pages in watch thread " + fullyRenderedPagesList.size.toString())
                 }
 
                 delay(200L)

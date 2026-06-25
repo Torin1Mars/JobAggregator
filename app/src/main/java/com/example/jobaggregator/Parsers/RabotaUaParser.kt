@@ -198,17 +198,16 @@ class RabotaUaParser @Inject constructor(context: Context,
         }
 
         if (vacanciesMainPagesList.size == totalPagesInRespond){
-            Log.d("MyTag", "MainPages have been parsed")
-
             needToCollectMainVacanciesPages = false
             startingParsingByPages = true
         }
 
         if (startingParsingByPages){
-            Log.d("MyTag", "Parsing main pages by Job Cards started")
+            Log.d("MyTag", "Parsing main pages by each page started")
             //Parsing page by page
             //Starting parsing from first element
 
+            //TODO Continuing here :
             NewParseSinglePageRespond (currentParsedPage,
                 returnParsedVacancies = {jobCardsParsedList -> vacanciesJobCardsList.addAll(jobCardsParsedList)},
                 finishParsing = {startingParseNextPage()} )
@@ -344,8 +343,6 @@ class RabotaUaParser @Inject constructor(context: Context,
                 if (lastRunningParsingIndex > totalPagesInRespond) {
                     //Do nothing
                 } else {
-                    Log.d("MyTag", "New query was added to queue" + lastRunningParsingIndex)
-
                     val pageQuery = String.format(queryTemplate, queryInitialLink, lastRunningParsingIndex)
                     tempList.add(pageQuery)
 
@@ -363,7 +360,6 @@ class RabotaUaParser @Inject constructor(context: Context,
                 })
 
                 rendersAreRunning = true
-                Log.d("MyTag", "New pull has started " + lastRunningParsingIndex)
             }
         }
 
@@ -371,12 +367,12 @@ class RabotaUaParser @Inject constructor(context: Context,
             StartParsingNewPagesPull()
         }
 
-
         if (lastRunningParsingIndex > totalPagesInRespond && !rendersAreRunning) {
             //Parsing has finished
             returnParsedPages(vacanciesMainPagesList)
-
             resetValues()
+
+            Log.d("MyTag", "Parsing main pages have finished " + vacanciesMainPagesList.size+1)
         }
     }
 
