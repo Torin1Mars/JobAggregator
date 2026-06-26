@@ -6,7 +6,9 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -20,12 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
+import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONTokener
+import kotlin.collections.forEach
 
 /**
  * One scraped vacancy card.
@@ -65,16 +69,18 @@ suspend fun parseAllVacancies(
     context: Context,
     searchUrl: String,
     totalPages: Int
-): List<Vacancy> {
-    val allVacancies = mutableListOf<Vacancy>()
+): List<String> {
+    val allVacanciesQueries = mutableListOf<String>()
 
-    for (pageNumber in 1..totalPages) {
+    (1..totalPages).forEach {pageIndex->
         // FUNCTION 2 runs here, once per page in the loop
-        val vacanciesOnPage = parseVacancyPage(context, searchUrl, pageNumber)
-        allVacancies += vacanciesOnPage
+        val vacanciesOnPage = parseVacancyPage(context, searchUrl, pageIndex)
+        allVacanciesQueries.addAll(vacanciesOnPage)
+
+        Log.d("MyTag", "Page have been parsed : " + pageIndex)
     }
 
-    return allVacancies
+    return allVacanciesQueries
 }
 
 // =============================================================================
@@ -90,11 +96,11 @@ private suspend fun parseVacancyPage(
     context: Context,
     searchUrl: String,
     pageNumber: Int
-): List<Vacancy> {
+): List<String> {
     val pageUrl = buildPageUrl(searchUrl, pageNumber)
     val rawHtml = fetchPageHtml(context, pageUrl) // FUNCTION 3
-    // TODO Parsing itself doesn't working but in general its interesting aproach because we can use just main page vacancies data
-    return parseVacanciesFromHtml(rawHtml)
+
+    return parseVacanciesCardsIdFromHtml(rawHtml)
 }
 
 // =============================================================================
@@ -155,7 +161,8 @@ private suspend fun fetchPageHtml(
                         Log.d("MyTag", "Fully rendered page have sent back " + html.toByteArray().size)
                     }*/
 
-                    if (result.toByteArray().size > rabotaUaRenderedVacancyPageByteSize){
+
+                    if (result.length > rabotaUaRenderedVacancyPageByteSize){
                         val html = unescapeJsString(result)
 
                         closeAndClearWebView()
@@ -164,7 +171,7 @@ private suspend fun fetchPageHtml(
                             continuation.resume(html) {}
                         }
 
-                        Log.d("MyTag", "Fully rendered page have sent back " + result.toByteArray().size)
+                        Log.d("MyTag", "Fully rendered page have sent back " + result.length)
                     }
                 }
             }
@@ -231,9 +238,26 @@ private fun unescapeJsString(raw: String): String {
  * one vacancy card, and find the actual class names / data attributes.
  * Add to build.gradle: implementation("org.jsoup:jsoup:1.17.2")
  */
-private fun parseVacanciesFromHtml(html: String): List<Vacancy> {
-    val doc = Ksoup.parse(html)
+private fun parseVacanciesCardsIdFromHtml(html: String): List<String> {
+    val htmlDoc = Ksoup.parse(html)
 
+    val vacanciesListElement = htmlDoc?.select("alliance-vacancy-card-mobile")
+
+    val foundedVacanciesQueriesList  = mutableListOf<String>()
+
+    var vacancyQuery: String = ""
+
+    if (vacanciesListElement != null){
+        vacanciesListElement.forEach { vacancy ->
+            vacancyQuery = vacancy.child(0).attr("href")
+
+            vacancyQuery.let { it-> foundedVacanciesQueriesList.add(it)}
+        }
+    }
+
+    return foundedVacanciesQueriesList
+
+    /*
     // PLACEHOLDER selector — adjust to the real card container class.
     val cards = doc.select("div.vacancy-card, article.card-vacancy")
 
@@ -245,7 +269,7 @@ private fun parseVacanciesFromHtml(html: String): List<Vacancy> {
         val salary = card.selectFirst(".vacancy-card__salary, .salary")?.text()
 
         Vacancy(title = title, company = company, city = city, salary = salary, url = link)
-    }
+    }*/
 }
 
 /**
@@ -272,10 +296,13 @@ fun VacancyParserScreen() {
     val scope = rememberCoroutineScope()
 
     var isLoading by remember { mutableStateOf(false) }
-    var vacancies by remember { mutableStateOf<List<Vacancy>>(emptyList()) }
+    var vacancies by remember { mutableStateOf<List<String>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+    Column (modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceAround){
+
         Button( onClick = {
             scope.launch {
                 isLoading = true
@@ -297,10 +324,11 @@ fun VacancyParserScreen() {
         }) {
             Text(if (isLoading) "Loading..." else "Parse vacancies")
         }
+
+        errorMessage?.let { Text("Error: $it") }
+        Text("Found ${vacancies.size} vacancies")
     }
 
-    errorMessage?.let { Text("Error: $it") }
-    Text("Found ${vacancies.size} vacancies")
 }
 
 // Public-visibility wrappers only needed because the real functions above
