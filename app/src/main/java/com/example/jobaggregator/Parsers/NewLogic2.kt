@@ -6,13 +6,37 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.jobaggregator.ViewModels.WebViewViewModel
 import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
+import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONTokener
+import kotlin.collections.forEach
 import kotlin.coroutines.resumeWithException
+
 
 class WebViewPool(
     context: Context,
@@ -39,7 +63,7 @@ class WebViewPool(
             }
         }
         initialized = true
-        Log.d("WebViewPool", "Warmed up $poolSize WebViews")
+        Log.d("MyTag", "Warmed up $poolSize WebViews")
     }
 
     private fun createWebView(): WebView = WebView(appContext).apply {
@@ -91,8 +115,13 @@ class WebViewPool(
                         "(function(){return document.documentElement.outerHTML;})();"
                     ) { result ->
                         if (result.toByteArray().size > minHtmlBytes) {
+
+                            Log.d("MyTag", "Page rendered ${result.length}")
+
                             val html = unescapeJsString(result)
-                            if (continuation.isActive) continuation.resume(html) {}
+                            if (continuation.isActive){
+                                continuation.resume(html) {}
+                            }
                         }
                         // else: page hasn't fully rendered yet — do nothing and
                         // let the withTimeout() in renderPage() catch a stuck page
@@ -162,18 +191,81 @@ suspend fun parseAllVacancies(
 }
 
 
-class VacancyViewModel(context: Context) : ViewModel() {
-    private val webViewPool = WebViewPool(context, poolSize = 5)
+/////////////////Supporting functions /////////////////////////
 
-    fun parse(searchUrl: String, totalPages: Int) {
-        viewModelScope.launch {
-            val vacancies = parseAllVacancies(webViewPool, searchUrl, totalPages)
-            // ...
+private fun buildPageUrl(searchUrl: String, pageNumber: Int): String {
+    if (pageNumber <= 1) return searchUrl
+    val separator = if (searchUrl.contains("?")) "&" else "?"
+    return "$searchUrl${separator}page=$pageNumber"
+}
+
+private fun parseVacanciesCardsIdFromHtml(html: String): List<String> {
+    val htmlDoc = Ksoup.parse(html)
+
+    val vacanciesListElement = htmlDoc?.select("alliance-vacancy-card-mobile")
+
+    val foundedVacanciesQueriesList  = mutableListOf<String>()
+
+    var vacancyQuery: String = ""
+
+    if (vacanciesListElement != null){
+        vacanciesListElement.forEach { vacancy ->
+            vacancyQuery = vacancy.child(0).attr("href")
+
+            vacancyQuery.let { it-> foundedVacanciesQueriesList.add(it)}
         }
     }
 
-    override fun onCleared() {
-        viewModelScope.launch { webViewPool.shutdown() }
-    }
+    return foundedVacanciesQueriesList
+
+    /*
+    // PLACEHOLDER selector — adjust to the real card container class.
+    val cards = doc.select("div.vacancy-card, article.card-vacancy")
+
+    return cards.mapNotNull { card ->
+        val title = card.selectFirst(".vacancy-card__title, a.title")?.text() ?: return@mapNotNull null
+        val link = card.selectFirst("a")?.absUrl("href") ?: ""
+        val company = card.selectFirst(".vacancy-card__company, .company-name")?.text() ?: ""
+        val city = card.selectFirst(".vacancy-card__city, .city")?.text()
+        val salary = card.selectFirst(".vacancy-card__salary, .salary")?.text()
+
+        Vacancy(title = title, company = company, city = city, salary = salary, url = link)
+    }*/
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+@Composable
+fun VacancyParserScreen2(currentContext: Context)  {
+    val context = currentContext
+    val webViewsModel: WebViewViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer { WebViewViewModel(context.applicationContext) }
+        }
+    )
+
+    val isLoading by webViewsModel.isLoading.collectAsState()
+    val vacancies by webViewsModel.vacancies.collectAsState()
+    val errorMessage by webViewsModel.error.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceAround
+    ) {
+        Button(colors = if (isLoading){
+            ButtonDefaults.buttonColors(containerColor = Color.Red)
+        } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
+
+            //TODO make it logic flexible, add here automatic numbers of pages checking before running vacancies parsing
+            onClick = {
+            webViewsModel.parse("https://rabota.ua/zapros/smila", 10)
+        }) {
+            Text(if (isLoading) "Loading..." else "Parse vacancies")
+        }
+
+        errorMessage?.let { Text("Error: $it") }
+        Text("Found ${vacancies.size} vacancies")
+    }
+
+}

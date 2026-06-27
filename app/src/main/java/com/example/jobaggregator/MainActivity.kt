@@ -9,7 +9,8 @@ import androidx.annotation.RequiresApi
 
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.jobaggregator.Parsers.RabotaUaParser
-import com.example.jobaggregator.Parsers.VacancyParserScreen
+
+import com.example.jobaggregator.Parsers.VacancyParserScreen2
 import com.example.jobaggregator.ViewModels.WebViewProducerViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -28,7 +29,7 @@ class MainActivity:ComponentActivity() {
 
             val parser: RabotaUaParser = RabotaUaParser(this, rabotaUaViewModel)
             parser.test()*/
-            VacancyParserScreen()
+            VacancyParserScreen2(currentContext = applicationContext)
             }
     }
 
