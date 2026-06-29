@@ -27,7 +27,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.jobaggregator.ViewModels.WebViewViewModel
-import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
+import com.example.jobaggregator.supportingData.rabotaUaFullyRenderedVacancyPageLenght
+import com.example.jobaggregator.supportingData.rabotaUaMaxRuningWebViewsInOnes
+import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -39,9 +41,10 @@ import kotlin.coroutines.resumeWithException
 
 
 class WebViewPool(
-    context: Context,
-    private val poolSize: Int = 5
+    context: Context
 ) {
+    private val poolSize: Int = rabotaUaMaxRuningWebViewsInOnes
+
     // Use applicationContext — these WebViews live as long as the pool does,
     // so holding an Activity context here would leak the Activity.
     private val appContext = context.applicationContext
@@ -80,16 +83,14 @@ class WebViewPool(
      * Always returns the WebView to the pool, even on error/timeout/cancellation.
      */
     suspend fun renderPage(
-        url: String,
-        minHtmlBytes: Int = 0,
-        timeoutMs: Long = 15_000
+        url: String
     ): String {
         if (!initialized) warmUp()
 
         val webView = pool.receive() // suspends here if all 5 are busy
         return try {
-            withTimeout(timeoutMs) {
-                fetchHtml(webView, url, minHtmlBytes)
+            withTimeout(rabotaUaParerRenderDelay) {
+                fetchHtml(webView, url, rabotaUaFullyRenderedVacancyPageLenght)
             }
         } finally {
             // Reset the instance before it goes back in the pool — detach the
@@ -106,7 +107,7 @@ class WebViewPool(
     private suspend fun fetchHtml(
         webView: WebView,
         url: String,
-        minHtmlBytes: Int
+        minHtmlLenght: Int
     ): String = withContext(Dispatchers.Main) {
         suspendCancellableCoroutine { continuation ->
             webView.webViewClient = object : WebViewClient() {
@@ -114,7 +115,7 @@ class WebViewPool(
                     view.evaluateJavascript(
                         "(function(){return document.documentElement.outerHTML;})();"
                     ) { result ->
-                        if (result.toByteArray().size > minHtmlBytes) {
+                        if (result.length > minHtmlLenght) {
 
                             Log.d("MyTag", "Page rendered ${result.length}")
 
@@ -176,20 +177,41 @@ private fun unescapeJsString(raw: String): String = try {
 }
 
 
+/*
 suspend fun parseAllVacancies(
     pool: WebViewPool,
-    searchUrl: String,
-    totalPages: Int
+    searchUrl: String
 ): List<String> = coroutineScope {
+
+    //TODO Continuing to set up it here:
+
     (1..totalPages).map { pageIndex ->
         async {
             val url = buildPageUrl(searchUrl, pageIndex)
-            val html = pool.renderPage(url, minHtmlBytes = rabotaUaRenderedVacancyPageByteSize)
+            val html = pool.renderPage(url)
             parseVacanciesCardsIdFromHtml(html)
         }
     }.awaitAll().flatten()
-}
+}*/
 
+suspend fun checkHowManyPagesInRespond(
+    searchingUrl: String,
+    pool: WebViewPool
+): Int {
+    var pagesCount = 0
+    coroutineScope {
+            async {
+                Log.d("MyTag", "Checking is running")
+                //Closing all previously active views
+                pool.shutdown()
+
+                val html = pool.renderPage(searchingUrl)
+                pagesCount = getPagesCount(html)
+            }
+        }.await()
+
+    return pagesCount
+}
 
 /////////////////Supporting functions /////////////////////////
 
@@ -232,8 +254,39 @@ private fun parseVacanciesCardsIdFromHtml(html: String): List<String> {
         Vacancy(title = title, company = company, city = city, salary = salary, url = link)
     }*/
 }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////
+
+private fun getPagesCount(htmlPage: String): Int {
+    var pagesCount : Int = 0
+
+    val document = Ksoup.parse(htmlPage)
+    val paginationStatusBar = document.selectFirst(".paginator")
+
+    //val lastPageCountElement = paginationStatusBar?.select("a.ng-star-inserted")?.get(3)
+    val lastPageCountElement = paginationStatusBar?.select("a:nth-last-child(2)")
+
+
+    if (lastPageCountElement != null){
+        pagesCount = lastPageCountElement.text().toInt()
+    }
+
+    return pagesCount
+}
+
+@Composable
+private fun StartRunUserQuery(userQuery: String, viewModel : WebViewViewModel){
+
+    val needToCheckRespondPagesCount by remember { mutableStateOf<Boolean>(true)  }
+    val respondPagesCount by viewModel.respondPagesCount.collectAsState()
+
+    if (needToCheckRespondPagesCount) {
+        viewModel.parseUserQuery(userQuery)
+    }
+
+
+    //viewModel.parseUserQuery("https://rabota.ua/zapros/smila")
+}
+
 
 @Composable
 fun VacancyParserScreen2(currentContext: Context)  {
@@ -257,10 +310,8 @@ fun VacancyParserScreen2(currentContext: Context)  {
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
 
-            //TODO make it logic flexible, add here automatic numbers of pages checking before running vacancies parsing
-            onClick = {
-            webViewsModel.parse("https://rabota.ua/zapros/smila", 10)
-        }) {
+            onClick = {webViewsModel.parseUserQuery("https://rabota.ua/zapros/smila")} )
+        {
             Text(if (isLoading) "Loading..." else "Parse vacancies")
         }
 

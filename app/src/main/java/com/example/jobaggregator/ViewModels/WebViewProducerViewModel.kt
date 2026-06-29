@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.jobaggregator.domain.JobsDbDao
-import com.example.jobaggregator.supportingData.rabotaUaRenderedVacancyPageByteSize
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -62,7 +61,7 @@ class WebViewProducerViewModel @Inject constructor(context: Context,
             while (_checkingIsRunning){
 
                 _webRunningViewsItemsList.forEach { webViewItem->
-                    if (webViewItem.viewHtmlPage.value.toByteArray().size > rabotaUaRenderedVacancyPageByteSize){
+                    if (webViewItem.viewHtmlPage.value.toByteArray().size > 150_000){
 
                         if (webViewItem in _fullyRenderedViewsList) {
                             //Do nothing, it means that we need to skip it
