@@ -1,16 +1,19 @@
 package com.example.jobaggregator.Parsers
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,16 +29,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.room.util.query
 import com.example.jobaggregator.ViewModels.WebViewViewModel
+import com.example.jobaggregator.data.JobCard
+import com.example.jobaggregator.supportingData.dateFormat
+import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaFullyRenderedVacancyPageLenght
 import com.example.jobaggregator.supportingData.rabotaUaMaxRuningWebViewsInOnes
 import com.example.jobaggregator.supportingData.rabotaUaParerRenderDelay
+import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONTokener
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import kotlin.collections.forEach
 import kotlin.coroutines.resumeWithException
 
@@ -177,38 +187,113 @@ private fun unescapeJsString(raw: String): String = try {
 }
 
 
-/*
-suspend fun parseAllVacancies(
+
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun parseVacanciesJobCards(
     pool: WebViewPool,
-    searchUrl: String
+    jobCardsQueries: List<String>
 ): List<String> = coroutineScope {
+    val vacancies = mutableListOf<String>()
 
-    //TODO Continuing to set up it here:
+    //TODO Optimize it here :
 
-    (1..totalPages).map { pageIndex ->
+    jobCardsQueries.forEach {query->
+        val html = pool.renderPage(query)
+        var parsedVacancy = ""
+        parsedVacancy = parseVacancyCard(html)
+
+        vacancies.add(parsedVacancy)
+
+        Log.d("MyTag", "Vacancy parsed")
+    }
+
+    return@coroutineScope vacancies
+
+    /*
+    (0..jobCardsQueries.size).map { pageQuery ->
         async {
-            val url = buildPageUrl(searchUrl, pageIndex)
-            val html = pool.renderPage(url)
-            parseVacanciesCardsIdFromHtml(html)
+            val currentUrl = jobCardsQueries[pageQuery]
+            val html = pool.renderPage(currentUrl)
+            parseVacancyCard(html)
         }
-    }.awaitAll().flatten()
-}*/
+    }.awaitAll().flatten()*/
+}
 
 suspend fun checkHowManyPagesInRespond(
     searchingUrl: String,
     pool: WebViewPool
 ): Int {
     var pagesCount = 0
-    coroutineScope {
-            async {
-                Log.d("MyTag", "Checking is running")
-                //Closing all previously active views
-                pool.shutdown()
+    pagesCount = coroutineScope {
+        var count :Int = 0
 
-                val html = pool.renderPage(searchingUrl)
-                pagesCount = getPagesCount(html)
-            }
-        }.await()
+        Log.d("MyTag", searchingUrl)
+        val html = pool.renderPage(searchingUrl)
+
+        try{
+            count = getPagesCount(html)
+        }catch (e: Exception){
+            Log.d("MyTag", "Error while checking pages count")
+            Log.d("MyTag", e.message.toString())
+        }
+
+        return@coroutineScope count
+    }
+
+    return pagesCount
+}
+
+suspend fun parseJobCardsIds(
+    pool: WebViewPool,
+    searchUrl: String,
+    totalPages: Int
+): List<String> = coroutineScope {
+
+    (1..totalPages).map { pageIndex ->
+        async {
+            val url = buildPageUrl(searchUrl, pageIndex)
+            val html = pool.renderPage(url)
+            collectVacanciesLinksOnPage(html)
+        }
+    }.awaitAll().flatten()
+}
+
+
+fun collectVacanciesLinksOnPage (rawHtmlRespond: String): List <String>{
+
+    val vacanciesIdCardsList = mutableListOf<String>()
+    val jobVacancyFullQueryTemplate = "%s%s"
+
+    val document = Ksoup.parse(rawHtmlRespond)
+    val vacanciesBoxElement = document.selectFirst("alliance-jobseeker-mobile-vacancies-list:nth-child(2) > div:nth-child(1)")
+    val vacanciesListElement = vacanciesBoxElement?.select("alliance-vacancy-card-mobile")
+
+    var vacancyQuery = ""
+
+    vacanciesListElement?.forEach { vacancy ->
+        vacancyQuery = vacancy.child(0).attr("href")
+
+        if (!vacancyQuery.isBlank()) {
+            vacanciesIdCardsList.add(String.format(jobVacancyFullQueryTemplate,rabotaUaUrl, vacancyQuery))
+        }
+    }
+
+    return vacanciesIdCardsList
+}
+
+private fun getPagesCount(htmlPage: String): Int {
+    var pagesCount : Int = 0
+
+    val document = Ksoup.parse(htmlPage)
+    val paginationStatusBar = document.selectFirst(".paginator")
+
+    //val lastPageCountElement = paginationStatusBar?.select("a.ng-star-inserted")?.get(3)
+    val lastPageCountElement = paginationStatusBar?.select("a:nth-last-child(2)")
+
+
+    if (lastPageCountElement != null){
+        pagesCount = lastPageCountElement.text().toInt()
+    }
 
     return pagesCount
 }
@@ -239,54 +324,63 @@ private fun parseVacanciesCardsIdFromHtml(html: String): List<String> {
     }
 
     return foundedVacanciesQueriesList
+}
 
-    /*
-    // PLACEHOLDER selector — adjust to the real card container class.
-    val cards = doc.select("div.vacancy-card, article.card-vacancy")
+@RequiresApi(Build.VERSION_CODES.O)
+fun parseVacancyCard(jobHtmlPage: String): String {
 
-    return cards.mapNotNull { card ->
-        val title = card.selectFirst(".vacancy-card__title, a.title")?.text() ?: return@mapNotNull null
-        val link = card.selectFirst("a")?.absUrl("href") ?: ""
-        val company = card.selectFirst(".vacancy-card__company, .company-name")?.text() ?: ""
-        val city = card.selectFirst(".vacancy-card__city, .city")?.text()
-        val salary = card.selectFirst(".vacancy-card__salary, .salary")?.text()
+    val document = Ksoup.parse(jobHtmlPage)
 
-        Vacancy(title = title, company = company, city = city, salary = salary, url = link)
-    }*/
+    fun convertRecivedDate(receivedData: String): LocalDate {
+        val day  = receivedData.substringBefore(" ").toInt()
+
+        var monthText = receivedData.substringAfter(" ").substringBefore(" ")
+
+        val month = monthUa.indexOf(monthText)
+
+        val year = receivedData.substringAfter(" ").substringAfter(" ").toInt()
+
+        return LocalDate.of(year,month,day)
+    }
+
+    val vacancyId =  document.body().ownText().substringAfter("ORIGIN VACANCY ID =")
+
+    val element = document.selectFirst("span.santa-text-white:nth-child(1)")
+    var rawDate = element!!.text()
+
+    val date = convertRecivedDate(rawDate)
+
+    val formater = DateTimeFormatter.ofPattern(dateFormat)
+    val dateStr = date.format(formater).toString()
+
+    val jobTitle: String = document.selectFirst("[data-id=vacancy-title]")?.text() ?: "Empty"
+    val jobDescription: String? = document.selectFirst("#description-wrap")?.text() ?: "Empty"
+
+    val jobLocation =
+        document.selectFirst("[data-id=vacancy-city]")?.parent()?.text()?:"No information"
+
+    val jobCompany: String? =
+        document.selectFirst("a[href^=/company] > span")?.text()?:"No information"
+
+    val jobSalary: String? =
+        document.selectFirst("[data-id=vacancy-salary-from-to]")?.text() ?: "Empty"
+
+    val jobUrl = rabotaUaUrl+"/"+vacancyId
+
+    val card = JobCard(
+        jobIdOnWebsite = vacancyId,
+        publicationDate = dateStr,
+        jobTitle = jobTitle,
+        jobDescription = jobDescription,
+        jobLocation = jobLocation,
+        jobCompany = jobCompany,
+        jobSalary = jobSalary,
+        jobUrl = jobUrl
+    )
+
+    return jobTitle
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
-private fun getPagesCount(htmlPage: String): Int {
-    var pagesCount : Int = 0
-
-    val document = Ksoup.parse(htmlPage)
-    val paginationStatusBar = document.selectFirst(".paginator")
-
-    //val lastPageCountElement = paginationStatusBar?.select("a.ng-star-inserted")?.get(3)
-    val lastPageCountElement = paginationStatusBar?.select("a:nth-last-child(2)")
-
-
-    if (lastPageCountElement != null){
-        pagesCount = lastPageCountElement.text().toInt()
-    }
-
-    return pagesCount
-}
-
-@Composable
-private fun StartRunUserQuery(userQuery: String, viewModel : WebViewViewModel){
-
-    val needToCheckRespondPagesCount by remember { mutableStateOf<Boolean>(true)  }
-    val respondPagesCount by viewModel.respondPagesCount.collectAsState()
-
-    if (needToCheckRespondPagesCount) {
-        viewModel.parseUserQuery(userQuery)
-    }
-
-
-    //viewModel.parseUserQuery("https://rabota.ua/zapros/smila")
-}
-
 
 @Composable
 fun VacancyParserScreen2(currentContext: Context)  {
@@ -298,7 +392,7 @@ fun VacancyParserScreen2(currentContext: Context)  {
     )
 
     val isLoading by webViewsModel.isLoading.collectAsState()
-    val vacancies by webViewsModel.vacancies.collectAsState()
+    val vacancies by webViewsModel.vacanciesIds.collectAsState()
     val errorMessage by webViewsModel.error.collectAsState()
 
     Column(

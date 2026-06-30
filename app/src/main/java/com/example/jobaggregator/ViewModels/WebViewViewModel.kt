@@ -1,23 +1,34 @@
 package com.example.jobaggregator.ViewModels
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.Parsers.WebViewPool
 import com.example.jobaggregator.Parsers.checkHowManyPagesInRespond
+import com.example.jobaggregator.Parsers.parseJobCardsIds
+import com.example.jobaggregator.Parsers.parseVacanciesJobCards
+import com.example.jobaggregator.data.JobCard
+import com.example.jobaggregator.supportingData.rabotaUaUrl
+import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.collections.forEach
 
 class WebViewViewModel(context: Context) : ViewModel() {
     private val webViewPool = WebViewPool(context)
 
-    private val _vacancies = MutableStateFlow<List<String>>(emptyList())
-    private val _respondPagesCount = MutableStateFlow<Int?>(null)
 
-    val vacancies: StateFlow<List<String>> = _vacancies.asStateFlow()
+    private val _respondPagesCount = MutableStateFlow<Int?>(null)
+    private val _vacanciesIds = MutableStateFlow<List<String>>(emptyList())
+    private val _vacanciesJobCards = MutableStateFlow<List<String>>(emptyList())
+
+
     val respondPagesCount: StateFlow<Int?> = _respondPagesCount.asStateFlow()
+    val vacanciesIds: StateFlow<List<String>> = _vacanciesIds.asStateFlow()
+    val vacanciesJobCards = _vacanciesJobCards.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -25,7 +36,7 @@ class WebViewViewModel(context: Context) : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun parseUserQuery(searchUrl: String) {
+    fun parseUserQuery(searchingUrl: String) {
         /*viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -38,13 +49,12 @@ class WebViewViewModel(context: Context) : ViewModel() {
             }
         }*/
 
-
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                _respondPagesCount.value = checkHowManyPagesInRespond(searchUrl, webViewPool)
-                //_vacancies.value = parseAllVacancies(webViewPool, searchUrl)
+                _runNewParsing(searchingUrl)
+
             } catch (e: Exception) {
                 _error.value = e.message
             } finally {
@@ -53,8 +63,33 @@ class WebViewViewModel(context: Context) : ViewModel() {
         }
     }
 
+    private suspend fun _runNewParsing(userQuery: String){
+
+        //Checking how many pages with vacancies in query respond
+        _respondPagesCount.value = checkHowManyPagesInRespond(userQuery, webViewPool)
+
+        //Collecting vacancies cards Id's
+        if (respondPagesCount.value!=null){
+            //Checking pages count finished, beginning parsing
+            Log.d("MyTag", "Beginning parsing Vacancies Id's")
+
+            Log.d("MyTag", respondPagesCount.value!!.toString())
+            _vacanciesIds.value = parseJobCardsIds(webViewPool, userQuery, respondPagesCount.value!!)
+
+            //Swapping back to default value
+            _respondPagesCount.value = null
+        }
+
+        //Parsing Exactly vacancies
+        if (vacanciesIds.value.isNotEmpty()){
+            Log.d("MyTag", "Vacancy parsing started")
+            _vacanciesJobCards.value = parseVacanciesJobCards(webViewPool, vacanciesIds.value)
+        }
+    }
+
     override fun onCleared() {
         viewModelScope.launch { webViewPool.shutdown() }
     }
 
 }
+
