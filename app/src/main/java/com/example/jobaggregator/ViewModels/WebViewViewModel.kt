@@ -1,7 +1,9 @@
 package com.example.jobaggregator.ViewModels
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.Parsers.WebViewPool
@@ -36,6 +38,7 @@ class WebViewViewModel(context: Context) : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun parseUserQuery(searchingUrl: String) {
         /*viewModelScope.launch {
             _isLoading.value = true
@@ -52,17 +55,20 @@ class WebViewViewModel(context: Context) : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            try {
+            /*try {
                 _runNewParsing(searchingUrl)
 
             } catch (e: Exception) {
                 _error.value = e.message
             } finally {
                 _isLoading.value = false
-            }
+            }*/
+
+            _runNewParsing(searchingUrl)
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private suspend fun _runNewParsing(userQuery: String){
 
         //Checking how many pages with vacancies in query respond

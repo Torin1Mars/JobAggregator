@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.isNotEmpty
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -43,6 +44,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.time.withTimeoutOrNull
+import okhttp3.internal.notify
+import okhttp3.internal.platform.android.ConscryptSocketAdapter.Companion.factory
+import okio.Timeout
 import org.json.JSONTokener
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -67,9 +72,9 @@ class WebViewPool(
     private val initMutex = Mutex()
     private var initialized = false
 
-    /** Creates the 5 WebViews once. Safe to call multiple times — only runs once. */
+    /** Creates the WebViews once. Safe to call multiple times — only runs once. */
     suspend fun warmUp() = initMutex.withLock {
-        if (initialized) return@withLock
+        if (pool.equals(10)) return@withLock
         withContext(Dispatchers.Main) {
             repeat(poolSize) {
                 pool.trySend(createWebView())
@@ -95,22 +100,41 @@ class WebViewPool(
     suspend fun renderPage(
         url: String
     ): String {
+
         if (!initialized) warmUp()
 
-        val webView = pool.receive() // suspends here if all 5 are busy
+
+        var webView = pool.receive() // suspends here if all views are busy
+        var replacedWebView : WebView? = null
         return try {
             withTimeout(rabotaUaParerRenderDelay) {
                 fetchHtml(webView, url, rabotaUaFullyRenderedVacancyPageLenght)
             }
-        } finally {
+        }catch (e: TimeoutCancellationException){
+            replacedWebView = replace(webView)
+
+            return ""
+        }
+        finally {
             // Reset the instance before it goes back in the pool — detach the
             // listener so a late/dangling JS callback from this load can't
             // fire into the next borrower's continuation.
-            withContext(Dispatchers.Main) {
-                webView.stopLoading()
-                webView.webViewClient = object : WebViewClient() {}
+
+
+            if (replacedWebView==null){
+                withContext(Dispatchers.Main) {
+                    webView.stopLoading()
+                    webView.webViewClient = object : WebViewClient() {}
+                }
+
+                pool.send(webView) // hand it back — wakes up the next waiter, if any
             }
-            pool.send(webView) // hand it back — wakes up the next waiter, if any
+            else{
+                destroyWebViewSafely(webView)
+
+                pool.send(replacedWebView) // hand it back — wakes up the next waiter, if any
+            }
+
         }
     }
 
@@ -119,52 +143,106 @@ class WebViewPool(
         url: String,
         minHtmlLenght: Int
     ): String = withContext(Dispatchers.Main) {
-        suspendCancellableCoroutine { continuation ->
-            webView.webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView, finishedUrl: String) {
-                    view.evaluateJavascript(
-                        "(function(){return document.documentElement.outerHTML;})();"
-                    ) { result ->
-                        if (result.length > minHtmlLenght) {
+            suspendCancellableCoroutine { continuation ->
+                webView.webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView, finishedUrl: String) {
+                        view.evaluateJavascript(
+                            "(function(){return document.documentElement.outerHTML;})();"
+                        ) { result ->
+                            if (result.length > minHtmlLenght) {
 
-                            Log.d("MyTag", "Page rendered ${result.length}")
+                                Log.d("MyTag", "Page rendered ${result.length}")
 
-                            val html = unescapeJsString(result)
-                            if (continuation.isActive){
-                                continuation.resume(html) {}
+                                val html = unescapeJsString(result)
+                                if (continuation.isActive){
+                                    continuation.resume(html) {}
+                                }
                             }
+                            // else: page hasn't fully rendered yet — do nothing and
+                            // let the withTimeout() in renderPage() catch a stuck page
+                            // instead of hanging forever.
                         }
-                        // else: page hasn't fully rendered yet — do nothing and
-                        // let the withTimeout() in renderPage() catch a stuck page
-                        // instead of hanging forever.
+                    }
+
+                    override fun onReceivedError(
+                        view: WebView,
+                        request: WebResourceRequest,
+                        error: WebResourceError
+                    ) {
+                        if (continuation.isActive) {
+                            /*continuation.resumeWithException(
+                                Exception("WebView load failed: ${error.description}")
+                            )*/
+
+                            Log.d("MyTag", "View recived error")
+
+                            continuation.cancel()
+
+                            view.apply {
+                                stopLoading()
+                                webViewClient = object : WebViewClient() {}
+                                clearHistory()
+                                clearCache(true)
+                                loadUrl("about:blank")
+                                onPause()
+                                removeAllViews()
+                                destroy()
+                            }
+
+                        }
                     }
                 }
 
-                override fun onReceivedError(
-                    view: WebView,
-                    request: WebResourceRequest,
-                    error: WebResourceError
-                ) {
-                    if (continuation.isActive) {
-                        continuation.resumeWithException(
-                            Exception("WebView load failed: ${error.description}")
-                        )
-                    }
-                }
-            }
+                /*continuation.invokeOnCancellation {
+                    //webView.reload()
+                    //webView.stopLoading()
+                }*/
 
-            continuation.invokeOnCancellation {
-                webView.stopLoading()
+                webView.loadUrl(url)
             }
+    }
 
-            webView.loadUrl(url)
+    suspend fun replace(target: WebView): WebView? = initMutex.withLock {
+        val drained = mutableListOf<WebView>()
+        var found = false
+
+        var freshWebView : WebView? = null
+
+        // Drain everything currently available (non-blocking)
+        while (true) {
+            val item = pool.tryReceive().getOrNull() ?: break
+            if (item === target) {
+                found = true
+            } else {
+                drained.add(item)
+            }
         }
+
+        // Put back everything except the target
+        drained.forEach { pool.trySend(it) }
+
+        if (found) {
+            destroyWebViewSafely(target)
+            freshWebView = withContext(Dispatchers.Main.immediate) { createWebView() }
+            pool.trySend(freshWebView)
+        }
+
+        return@withLock freshWebView
     }
 
     /** Call when you're truly done (e.g. ViewModel.onCleared) to free native resources. */
     suspend fun shutdown() = withContext(Dispatchers.Main) {
         repeat(poolSize) {
             val webView = pool.tryReceive().getOrNull() ?: return@repeat
+            destroyWebViewSafely(webView)
+
+            Log.d("MyTag", "Web View was replaced")
+        }
+        pool.close()
+    }
+
+    private suspend fun destroyWebViewSafely(webView: WebView) {
+        withContext(Dispatchers.Main.immediate) {
             webView.apply {
                 stopLoading()
                 webViewClient = object : WebViewClient() {}
@@ -175,8 +253,9 @@ class WebViewPool(
                 removeAllViews()
                 destroy()
             }
+
+            Log.d("MyTag", "Web View was destroyed")
         }
-        pool.close()
     }
 }
 
@@ -195,19 +274,15 @@ suspend fun parseVacanciesJobCards(
 ): List<String> = coroutineScope {
     val vacancies = mutableListOf<String>()
 
-    //TODO Optimize it here :
+    //And need to optimize renders logic , reload views if errors occurs
 
-    jobCardsQueries.forEach {query->
-        val html = pool.renderPage(query)
-        var parsedVacancy = ""
-        parsedVacancy = parseVacancyCard(html)
+    (0..jobCardsQueries.size-1).map { pageIndex ->
+        async {
+            val html = pool.renderPage(jobCardsQueries[pageIndex])
+            collectVacanciesLinksOnPage(html)
 
-        vacancies.add(parsedVacancy)
-
-        Log.d("MyTag", "Vacancy parsed")
-    }
-
-    return@coroutineScope vacancies
+        }
+    }.awaitAll().flatten()
 
     /*
     (0..jobCardsQueries.size).map { pageQuery ->
@@ -382,6 +457,7 @@ fun parseVacancyCard(jobHtmlPage: String): String {
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun VacancyParserScreen2(currentContext: Context)  {
     val context = currentContext
