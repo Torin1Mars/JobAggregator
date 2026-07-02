@@ -10,14 +10,12 @@ import com.example.jobaggregator.Parsers.WebViewPool
 import com.example.jobaggregator.Parsers.checkHowManyPagesInRespond
 import com.example.jobaggregator.Parsers.parseJobCardsIds
 import com.example.jobaggregator.Parsers.parseVacanciesJobCards
-import com.example.jobaggregator.data.JobCard
-import com.example.jobaggregator.supportingData.rabotaUaUrl
-import com.fleeksoft.ksoup.Ksoup
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.collections.forEach
+
 
 class WebViewViewModel(context: Context) : ViewModel() {
     private val webViewPool = WebViewPool(context)
@@ -91,6 +89,9 @@ class WebViewViewModel(context: Context) : ViewModel() {
             Log.d("MyTag", "Vacancy parsing started")
             _vacanciesJobCards.value = parseVacanciesJobCards(webViewPool, vacanciesIds.value)
         }
+
+        Log.d("MyTag", "All vacancies parsing finished !!!")
+        Log.d("MyTag", "${vacanciesJobCards.value.size}")
     }
 
     override fun onCleared() {
