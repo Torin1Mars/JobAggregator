@@ -10,6 +10,7 @@ import com.example.jobaggregator.Parsers.WebViewPool
 import com.example.jobaggregator.Parsers.checkHowManyPagesInRespond
 import com.example.jobaggregator.Parsers.parseJobCardsIds
 import com.example.jobaggregator.Parsers.parseVacanciesJobCards
+import com.example.jobaggregator.data.JobCard
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,7 @@ class WebViewViewModel(context: Context) : ViewModel() {
 
     private val _respondPagesCount = MutableStateFlow<Int?>(null)
     private val _vacanciesIds = MutableStateFlow<List<String>>(emptyList())
-    private val _vacanciesJobCards = MutableStateFlow<List<String>>(emptyList())
+    private val _vacanciesJobCards = MutableStateFlow<List<JobCard>>(emptyList())
 
 
     val respondPagesCount: StateFlow<Int?> = _respondPagesCount.asStateFlow()
@@ -72,6 +73,8 @@ class WebViewViewModel(context: Context) : ViewModel() {
         //Checking how many pages with vacancies in query respond
         _respondPagesCount.value = checkHowManyPagesInRespond(userQuery, webViewPool)
 
+        //TODO Need to delete old Rabota ua parser logic including hilt dependencies
+
         //Collecting vacancies cards Id's
         if (respondPagesCount.value!=null){
             //Checking pages count finished, beginning parsing
@@ -92,6 +95,8 @@ class WebViewViewModel(context: Context) : ViewModel() {
 
         Log.d("MyTag", "All vacancies parsing finished !!!")
         Log.d("MyTag", "${vacanciesJobCards.value.size}")
+
+        webViewPool.shutdown()
     }
 
     override fun onCleared() {

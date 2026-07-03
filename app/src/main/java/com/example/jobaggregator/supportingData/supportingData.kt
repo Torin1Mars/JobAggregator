@@ -5,9 +5,9 @@ import kotlin.time.Duration.Companion.seconds
 val workUaUrl: String  = "https://www.work.ua"
 
 val rabotaUaUrl: String  = "https://robota.ua"
-val rabotaUaFullyRenderedVacancyPageLenght = 150_000
-val rabotaUaMaxRuningWebViewsInOnes = 6
-val rabotaUaParerRenderDelay = 20.seconds
+val rabotaUaFullyRenderedVacancyPageLenght = 120_000
+val rabotaUaMaxRuningWebViewsInOnes = 7
+val rabotaUaParserRenderDelay = 20.seconds
 
 val dateFormat : String = "dd-MM-yyyy"
 val monthUa: List<String> = listOf("січня",
