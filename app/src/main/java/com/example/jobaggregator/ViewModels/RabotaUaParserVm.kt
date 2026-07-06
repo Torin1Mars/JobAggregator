@@ -11,16 +11,21 @@ import com.example.jobaggregator.Parsers.checkHowManyPagesInRespond
 import com.example.jobaggregator.Parsers.parseJobCardsIds
 import com.example.jobaggregator.Parsers.parseVacanciesJobCards
 import com.example.jobaggregator.data.JobCard
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-
-class WebViewViewModel(context: Context) : ViewModel() {
-    private val webViewPool = WebViewPool(context)
-
+@HiltViewModel
+class RabotaUaParserVm @Inject constructor(@ApplicationContext context: Context,
+                       private val webViewPool : WebViewPool,
+                       private val mainVM: MainViewModel) : ViewModel()
+{
+    //private val webViewPool = WebViewPool(context)
 
     private val _respondPagesCount = MutableStateFlow<Int?>(null)
     private val _vacanciesIds = MutableStateFlow<List<String>>(emptyList())
@@ -39,29 +44,9 @@ class WebViewViewModel(context: Context) : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun parseUserQuery(searchingUrl: String) {
-        /*viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            try {
-                _vacancies.value = parseAllVacancies(webViewPool, searchUrl, totalPages)
-            } catch (e: Exception) {
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
-            }
-        }*/
-
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            /*try {
-                _runNewParsing(searchingUrl)
-
-            } catch (e: Exception) {
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
-            }*/
 
             _runNewParsing(searchingUrl)
         }
@@ -102,6 +87,5 @@ class WebViewViewModel(context: Context) : ViewModel() {
     override fun onCleared() {
         viewModelScope.launch { webViewPool.shutdown() }
     }
-
 }
 
