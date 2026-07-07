@@ -25,8 +25,6 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext context: Context,
                        private val webViewPool : WebViewPool,
                        private val mainVM: MainViewModel) : ViewModel()
 {
-    //private val webViewPool = WebViewPool(context)
-
     private val _respondPagesCount = MutableStateFlow<Int?>(null)
     private val _vacanciesIds = MutableStateFlow<List<String>>(emptyList())
     private val _vacanciesJobCards = MutableStateFlow<List<JobCard>>(emptyList())
@@ -57,8 +55,6 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext context: Context,
 
         //Checking how many pages with vacancies in query respond
         _respondPagesCount.value = checkHowManyPagesInRespond(userQuery, webViewPool)
-
-        //TODO Need to delete old Rabota ua parser logic including hilt dependencies
 
         //Collecting vacancies cards Id's
         if (respondPagesCount.value!=null){

@@ -19,10 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.jobaggregator.Parsers.WorkUaParser
 
 import com.example.jobaggregator.ViewModels.RabotaUaParserVm
+import com.example.jobaggregator.ViewModels.WorkUaParserVm
 import dagger.hilt.android.AndroidEntryPoint
 
 
@@ -35,7 +38,9 @@ class MainActivity:ComponentActivity() {
         enableEdgeToEdge()
         setContent {
 
-            VacancyParserScreen(currentContext = applicationContext)
+            WorkUaParserScreen(currentContext = applicationContext)
+
+            //RabotaUaParserScreen(currentContext = applicationContext)
         }
     }
 
@@ -43,16 +48,52 @@ class MainActivity:ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun VacancyParserScreen(currentContext: Context)  {
-    val webViewsModel: RabotaUaParserVm = viewModel()
+fun WorkUaParserScreen(currentContext: Context) {
+    val webViewModel: WorkUaParserVm = viewModel()
+
+    val isLoading by webViewModel.isLoading.collectAsState()
+    val vacancies by webViewModel.vacanciesIds.collectAsState()
+    val errorMessage by webViewModel.error.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceAround
+    ) {
+        Button(
+            colors = if (isLoading) {
+                ButtonDefaults.buttonColors(containerColor = Color.Red)
+            } else {
+                ButtonDefaults.buttonColors(containerColor = Color.Green)
+            },
+            onClick = { webViewModel.runParsing() })
+        {
+            Text(if (isLoading) "Loading..." else "Parse vacancies")
+        }
+
+        errorMessage?.let { Text("Error: $it") }
+        Text("Found ${vacancies.size} vacancies")
+
+        Text(
+            modifier = Modifier.weight(1f).align(Alignment.End),
+            fontSize = 16.sp,
+            text = "Work.Ua Parser"
+        )
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun RabotaUaParserScreen(currentContext: Context)  {
+    val webViewModel: RabotaUaParserVm = viewModel()
     /*    factory = viewModelFactory {
             initializer { RabotaUaParserVm(context.applicationContext, ) }
         }
     )*/
 
-    val isLoading by webViewsModel.isLoading.collectAsState()
-    val vacancies by webViewsModel.vacanciesIds.collectAsState()
-    val errorMessage by webViewsModel.error.collectAsState()
+    val isLoading by webViewModel.isLoading.collectAsState()
+    val vacancies by webViewModel.vacanciesIds.collectAsState()
+    val errorMessage by webViewModel.error.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -63,13 +104,17 @@ fun VacancyParserScreen(currentContext: Context)  {
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
 
-            onClick = {webViewsModel.parseUserQuery("https://rabota.ua/zapros/smila")} )
+            onClick = {webViewModel.parseUserQuery("https://rabota.ua/zapros/smila")} )
         {
             Text(if (isLoading) "Loading..." else "Parse vacancies")
         }
 
         errorMessage?.let { Text("Error: $it") }
         Text("Found ${vacancies.size} vacancies")
+
+        Text(modifier = Modifier.weight(1f).align(Alignment.End),
+            fontSize = 16.sp,
+            text = "Rabota.Ua Parser")
     }
 
 }
