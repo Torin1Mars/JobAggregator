@@ -78,6 +78,8 @@ dependencies {
 
     //########################## Project dependencies ##########################
 
+    implementation("androidx.core:core-ktx:1.12.0")
+
     // Ksoup parser
     val ksoupVer : String = "0.2.1"
     implementation("com.fleeksoft.ksoup:ksoup:$ksoupVer")

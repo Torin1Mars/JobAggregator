@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.jobaggregator.Parsers.WorkUaParser
+import com.example.jobaggregator.Parsers.UserQueryManager
 
 import com.example.jobaggregator.ViewModels.RabotaUaParserVm
 import com.example.jobaggregator.ViewModels.WorkUaParserVm
@@ -66,7 +66,8 @@ fun WorkUaParserScreen(currentContext: Context) {
             } else {
                 ButtonDefaults.buttonColors(containerColor = Color.Green)
             },
-            onClick = { webViewModel.runParsing() })
+            onClick = {testQueryManager(currentContext)
+            /*webViewModel.runParsing()*/ })
         {
             Text(if (isLoading) "Loading..." else "Parse vacancies")
         }
@@ -81,6 +82,13 @@ fun WorkUaParserScreen(currentContext: Context) {
         )
     }
 }
+
+fun testQueryManager (context: Context){
+
+    val manager = UserQueryManager(context)
+    manager.test()
+}
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
