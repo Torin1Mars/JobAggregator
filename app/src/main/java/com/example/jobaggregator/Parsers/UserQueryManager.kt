@@ -1,53 +1,79 @@
 package com.example.jobaggregator.Parsers
 
 import android.content.Context
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import com.example.jobaggregator.supportingData.maxCityInputLenght
+import com.example.jobaggregator.supportingData.maxJobTitleInputLenght
 
 class UserQueryManager(appContext: Context) {
 
     private val context = appContext
 
-    var citiesListRu = null
-    var citiesListUa = null
-
-    var JobsTitles  = null
-
-    init {
-
-    }
-
     fun test(){
-        loadCitiesList(context)
+        val result = convertUserInputToWorkUa("smila", "Android")
     }
 
-    private fun loadCitiesList(context: Context) {
-        //TODO I think that this logic can be simplyfided with checking on only if user input is a char sequence
+    public fun convertUserInputToWorkUa(city: String =  "", jobTitle: String = ""): String{
 
-        val document  = context.assets.open("ukrainian_cities_ru.json").bufferedReader().use { it-> it.readText() }
+        var workUaQuery = ""
 
-        val userData = Json.decodeFromString< List<cityItem>>(document)
+        val jobFullQueryTemplate = "jobs-%s-%s"
+        val jobShortQueryTemplate = "jobs-%s"
+
+        //TODO need to add here .tolovercase to inputs and city formater which format city input to lathing letters
+
+        if (city.isNotEmpty() && jobTitle.isNotEmpty()){
+            workUaQuery = String.format(jobFullQueryTemplate, city, jobTitle)
+        }else if(city.isNotEmpty()){
+            workUaQuery = String.format(jobShortQueryTemplate, city)
+
+        }else if(jobTitle.isNotEmpty()){
+            workUaQuery = String.format(jobShortQueryTemplate, jobTitle)
+        }
+
+        return workUaQuery
     }
 
-    public fun validateUserInputCity(userInput: String): Boolean{
-        var status: Boolean = false
+    public fun checkUserInput (jobLocation : String, jobTitle : String): List<Boolean>{
 
+        val checkingResult = mutableListOf<Boolean>()
+
+        checkingResult.add(checkCityInput(jobLocation))
+        checkingResult.add(checkJobTitleInput(jobTitle))
+
+        return checkingResult
+    }
+
+    private fun checkCityInput (userInput : String): Boolean {
+        var status = false
+
+        userInput.any{it.isDigit()}
+        if (userInput.isNotBlank() ){
+            if (userInput.length > maxCityInputLenght){
+                //Do nothing
+            }else{
+                if (userInput.any{it.isLetter()}){
+                    status = true
+                }
+            }
+        }
         return status
     }
 
-    public fun validateUserInputJobTitle(): Boolean{
-        var status: Boolean = false
+    private fun checkJobTitleInput (userInput : String): Boolean {
+        var status = false
 
+        userInput.any{it.isDigit()}
+        if (userInput.isNotBlank() ){
+            if (userInput.length > maxJobTitleInputLenght){
+                //Do nothing
+            }else{
+                status = true
+            }
+        }
         return status
     }
 
-    @Serializable
-    internal data class cityItem (
-        val title: String,
-        val type: String,
-        val region : String,
-        val population : Int
-    )
 
 
 }
+

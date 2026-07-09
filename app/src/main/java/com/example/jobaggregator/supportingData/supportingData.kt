@@ -2,6 +2,9 @@ package com.example.jobaggregator.supportingData
 
 import kotlin.time.Duration.Companion.seconds
 
+val maxCityInputLenght: Int  = 15
+val maxJobTitleInputLenght: Int  = 100
+
 val workUaUrl: String  = "https://www.work.ua"
 val workUaParserRenderDelay = 60.seconds
 
