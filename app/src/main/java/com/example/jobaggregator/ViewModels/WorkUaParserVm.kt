@@ -21,8 +21,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 @HiltViewModel
 class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
-    val workUaParser: WorkUaParser,
-    val mainVM: MainViewModel): ViewModel(){
+    val workUaParser: WorkUaParser): ViewModel(){
 
     private val _respondPagesCount = MutableStateFlow<Int?>(null)
     private val _vacanciesIds = MutableStateFlow<List<String>>(emptyList())
@@ -37,6 +36,30 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun checkVacanciesCountByQuery(convertedQuery: String, vacanciesCount: MutableStateFlow<Int?> ){
+        viewModelScope.launch {
+            try{
+                withTimeoutOrNull (workUaParserRenderDelay){
+                    //Just for testing
+
+                    Log.d("MyTag", "Checking started")
+                    workUaParser.checkVacanciesCountByQuery(convertedQuery, vacanciesCount)
+
+                    Log.d("MyTag", "Checking finished")
+
+                    Log.d("MyTag", vacanciesCount.asStateFlow().value.toString())
+                }
+
+            }catch (e: TimeoutCancellationException){
+                Log.d("MyTag", "Timeout acceded!")
+
+            }catch (e: Exception){
+                Log.d("MyTag", "Parsing error acceded!")
+            }
+        }
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun runParsing(){

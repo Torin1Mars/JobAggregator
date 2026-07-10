@@ -12,6 +12,7 @@ import com.example.jobaggregator.supportingData.dateFormat
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -29,6 +30,88 @@ class WorkUaParser(context: Context) {
     fun getJobsCardsList(): MutableList<JobCard>{
         return jobsCardsList
     }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun checkVacanciesCountByQuery(query: String, result: MutableStateFlow<Int?>){
+
+        //TODO Need to add full querry with WWW... ets insted of current case
+
+        val userQuery: String = query
+
+        try {
+            val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
+            val htmlPageInString = currentResponse.body()!!
+
+            if (currentResponse.isSuccessful) {
+
+                val howMuchPages = checkIfSeveralPages(htmlPageInString)
+
+                result.value = howMuchPages
+
+                /*
+
+                if (howMuchPages > 1){
+
+                    ( 1 .. howMuchPages).forEach { page->
+
+                        try{
+                            val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
+                            val htmlPageInString2 = localResponse.body()!!
+
+                            val jobsList = getJobsIdList(htmlPageInString2)
+                            val foundedJobs = getJobsById(jobsList)
+
+                            jobsCardsList += foundedJobs
+                            Log.d("MyTag", "Page $page vacancies - ${foundedJobs.size}")
+
+
+                        }catch (e: Exception){
+                            CoroutineScope(Dispatchers.Main).launch {
+                                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                            }
+
+                            Log.d("MyTag", e.message.toString())
+                        }
+                    }
+
+                    Log.d("MyTag", jobsCardsList.size.toString())
+
+                }else{
+
+                    try {
+                        val jobsList = getJobsIdList(htmlPageInString)
+                        val foundedJobs = getJobsById(jobsList)
+
+                        jobsCardsList += foundedJobs
+
+                    }catch (e: Exception){
+                        CoroutineScope(Dispatchers.Main).launch {
+                            Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                        }
+
+                        Log.d("MyTag", e.message.toString())
+                    }
+                }*/
+
+            } else {
+                //Do nothing
+                CoroutineScope(Dispatchers.Main).launch {
+                    Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+                }
+                Log.d("MyTag", "Couldn't load initial request")
+            }
+
+        } catch (e: Exception) {
+            CoroutineScope(Dispatchers.Main).launch {
+                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
+            }
+
+            Log.d("MyTag", e.message.toString())
+        }
+    }
+
+
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun parseByQuery(query: String = "jobs-smila"){

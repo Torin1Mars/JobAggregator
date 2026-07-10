@@ -22,8 +22,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RabotaUaParserVm @Inject constructor(@ApplicationContext context: Context,
-                       private val webViewPool : WebViewPool,
-                       private val mainVM: MainViewModel) : ViewModel()
+                       private val webViewPool : WebViewPool) : ViewModel()
 {
     private val _respondPagesCount = MutableStateFlow<Int?>(null)
     private val _vacanciesIds = MutableStateFlow<List<String>>(emptyList())

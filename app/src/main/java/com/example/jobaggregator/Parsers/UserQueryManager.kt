@@ -1,6 +1,9 @@
 package com.example.jobaggregator.Parsers
 
 import android.content.Context
+import android.icu.text.Transliterator
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.example.jobaggregator.supportingData.maxCityInputLenght
 import com.example.jobaggregator.supportingData.maxJobTitleInputLenght
 
@@ -8,31 +11,88 @@ class UserQueryManager(appContext: Context) {
 
     private val context = appContext
 
-    fun test(){
-        val result = convertUserInputToWorkUa("smila", "Android")
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun convertUserQueryInput(queryCity: String = "", queryJobTitle: String = ""): List<String>{
+        val workUaQuery = convertUserInputForWorkUa(city = queryCity, jobTitle = queryJobTitle)
+        val rabotaUaQuery = convertUserInputForRabotaUa(city = queryCity, jobTitle = queryJobTitle)
+
+        return mutableListOf<String>(workUaQuery, rabotaUaQuery)
     }
 
-    public fun convertUserInputToWorkUa(city: String =  "", jobTitle: String = ""): String{
+    @RequiresApi(Build.VERSION_CODES.Q)
+    public fun convertUserInputForWorkUa(city: String =  "", jobTitle: String = ""): String{
 
+        val transliterator = Transliterator.getInstance("Any-Latin")
         var workUaQuery = ""
 
         val jobFullQueryTemplate = "jobs-%s-%s"
         val jobShortQueryTemplate = "jobs-%s"
 
-        //TODO need to add here .tolovercase to inputs and city formater which format city input to lathing letters
+        var convertedCity = ""
+        var convertedJobTitle = ""
 
         if (city.isNotEmpty() && jobTitle.isNotEmpty()){
-            workUaQuery = String.format(jobFullQueryTemplate, city, jobTitle)
-        }else if(city.isNotEmpty()){
-            workUaQuery = String.format(jobShortQueryTemplate, city)
+            convertedCity = transliterator.transliterate(city.lowercase())
+            convertedJobTitle = transliterator.transliterate(jobTitle.lowercase())
 
-        }else if(jobTitle.isNotEmpty()){
-            workUaQuery = String.format(jobShortQueryTemplate, jobTitle)
+            workUaQuery = String.format(jobFullQueryTemplate, convertedCity, convertedJobTitle)
+        }
+        else if(city.isNotEmpty()){
+            convertedCity = transliterator.transliterate(city.lowercase())
+
+            workUaQuery = String.format(jobShortQueryTemplate, convertedCity)
+        }
+        else if(jobTitle.isNotEmpty()){
+
+            convertedJobTitle = transliterator.transliterate(jobTitle.lowercase())
+
+            workUaQuery = String.format(jobShortQueryTemplate, convertedJobTitle)
         }
 
         return workUaQuery
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
+    public fun convertUserInputForRabotaUa(city: String =  "", jobTitle: String = ""): String{
+
+        val transliterator = Transliterator.getInstance("Any-Latin")
+        var workUaQuery = ""
+
+        val jobFullQueryTemplate = "ua/zapros/%s/%s"
+
+        val jobShortTemplateWithCity = "ua/zapros/%s"
+        val jobShortTemplateWithJob = "ua/zapros/%s/ukraine"
+
+        var convertedCity = ""
+        var convertedJobTitle = ""
+
+        if (city.isNotEmpty() && jobTitle.isNotEmpty()){
+            convertedCity = transliterator.transliterate(city.lowercase())
+            convertedJobTitle = transliterator.transliterate(jobTitle.lowercase())
+
+            workUaQuery = String.format(jobFullQueryTemplate, convertedJobTitle, convertedCity)
+        }
+        else if(city.isNotEmpty()){
+            convertedCity = transliterator.transliterate(city.lowercase())
+
+            workUaQuery = String.format(jobShortTemplateWithCity, convertedCity)
+        }
+        else if(jobTitle.isNotEmpty()){
+
+            convertedJobTitle = transliterator.transliterate(jobTitle.lowercase())
+
+            workUaQuery = String.format(jobShortTemplateWithJob, convertedJobTitle)
+        }
+
+        return workUaQuery
+    }
+
+
+
+
+
+
+    //////////////////////////////////////////ADDITIONAL////////////////////////////////////
     public fun checkUserInput (jobLocation : String, jobTitle : String): List<Boolean>{
 
         val checkingResult = mutableListOf<Boolean>()
