@@ -39,9 +39,6 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
                                         private val workUaParserVm: WorkUaParserVm,
                                         private val rabotaUaParserVm: RabotaUaParserVm): ViewModel() {
 
-    val vacanciesCountInRespondWorkUa = MutableStateFlow<Int?>(null)
-    val vacanciesCountInRespondRabotaUa = MutableStateFlow<Int?>(null)
-
 
     private fun formatJobCardsList(jobsCardList: MutableList<JobCard>): MutableList<DatabaseJobCard>{
         val databaseJobCardList = mutableListOf<DatabaseJobCard>()
@@ -58,7 +55,7 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     public fun checkVacanciesCount(workUaQuery: String = "", rabotaUaQuery: String = ""){
 
         if (workUaQuery.isNotBlank()){
-            workUaParserVm.checkVacanciesCountByQuery(workUaQuery, vacanciesCountInRespondWorkUa)
+            workUaParserVm.checkVacanciesCountByQuery(workUaQuery)
         }
 
         //TODO next

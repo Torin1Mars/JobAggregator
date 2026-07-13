@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.Parsers.WorkUaParser
@@ -23,10 +24,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     val workUaParser: WorkUaParser): ViewModel(){
 
+    private val _vacanciesCount = MutableStateFlow<Int?>(null)
+
     private val _respondPagesCount = MutableStateFlow<Int?>(null)
     private val _vacanciesIds = MutableStateFlow<List<String>>(emptyList())
     private val _vacanciesJobCards = MutableStateFlow<List<JobCard>>(emptyList())
 
+    val vacanciesCount = _vacanciesCount.asStateFlow()
     val respondPagesCount: StateFlow<Int?> = _respondPagesCount.asStateFlow()
     val vacanciesIds: StateFlow<List<String>> = _vacanciesIds.asStateFlow()
     val vacanciesJobCards = _vacanciesJobCards.asStateFlow()
@@ -38,18 +42,16 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     val error: StateFlow<String?> = _error.asStateFlow()
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun checkVacanciesCountByQuery(convertedQuery: String, vacanciesCount: MutableStateFlow<Int?> ){
+    fun checkVacanciesCountByQuery(convertedQuery: String ){
         viewModelScope.launch {
             try{
                 withTimeoutOrNull (workUaParserRenderDelay){
                     //Just for testing
 
                     Log.d("MyTag", "Checking started")
-                    workUaParser.checkVacanciesCountByQuery(convertedQuery, vacanciesCount)
+                    workUaParser.checkVacanciesCountByQuery(convertedQuery, _vacanciesCount)
 
                     Log.d("MyTag", "Checking finished")
-
-                    Log.d("MyTag", vacanciesCount.asStateFlow().value.toString())
                 }
 
             }catch (e: TimeoutCancellationException){
@@ -62,14 +64,14 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun runParsing(){
+    fun runParsing(query: String){
         viewModelScope.launch {
             try{
                 withTimeoutOrNull (workUaParserRenderDelay){
                     //Just for testing
 
                     Log.d("MyTag", "Parsing Started")
-                    workUaParser.parseByQuery() }
+                    workUaParser.parseByQuery(query) }
 
             }catch (e: TimeoutCancellationException){
                 Log.d("MyTag", "Timeout acceded!")

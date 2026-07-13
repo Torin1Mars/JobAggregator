@@ -9,6 +9,7 @@ import androidx.annotation.RequiresApi
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.Retrofit.RetrofitObj_WorkUA
 import com.example.jobaggregator.supportingData.dateFormat
+import com.example.jobaggregator.supportingData.workUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,9 +35,7 @@ class WorkUaParser(context: Context) {
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun checkVacanciesCountByQuery(query: String, result: MutableStateFlow<Int?>){
 
-        //TODO Need to add full querry with WWW... ets insted of current case
-
-        val userQuery: String = query
+        val userQuery: String =  query
 
         try {
             val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
@@ -44,12 +43,11 @@ class WorkUaParser(context: Context) {
 
             if (currentResponse.isSuccessful) {
 
-                val howMuchPages = checkIfSeveralPages(htmlPageInString)
+                val howMuchPages = checkVacanciesCountInRespond(htmlPageInString)
 
                 result.value = howMuchPages
 
                 /*
-
                 if (howMuchPages > 1){
 
                     ( 1 .. howMuchPages).forEach { page->
@@ -110,11 +108,23 @@ class WorkUaParser(context: Context) {
         }
     }
 
+    private fun checkVacanciesCountInRespond(htmlString: String): Int{
+        var pagesCount = 0
+
+        val document = Ksoup.parse(htmlString)
+
+        val countElement = document.select("div.mt-8.text-default-7 > span:first-child").first()
+
+
+        countElement.let { it-> pagesCount = it?.text()?.substringBefore(" ")!!.toInt() }
+
+        return pagesCount
+    }
 
 
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun parseByQuery(query: String = "jobs-smila"){
+    suspend fun parseByQuery(query: String){
 
         val userQuery: String = query
 

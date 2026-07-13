@@ -54,6 +54,8 @@ class MainActivity:ComponentActivity() {
 fun WorkUaParserScreen(currentContext: Context) {
     val webViewModel: WorkUaParserVm = viewModel()
 
+    val vacanciesCount by webViewModel.vacanciesCount.collectAsState()
+
     val isLoading by webViewModel.isLoading.collectAsState()
     val vacancies by webViewModel.vacanciesIds.collectAsState()
     val errorMessage by webViewModel.error.collectAsState()
@@ -84,21 +86,13 @@ fun WorkUaParserScreen(currentContext: Context) {
         }
 
         errorMessage?.let { Text("Error: $it") }
-        Text("Found ${vacancies.size} vacancies")
+        Text("Found:  $vacanciesCount vacancies")
 
         Text(modifier = Modifier.padding(bottom = 10.dp, end = 10.dp),
             fontSize = 16.sp,
             text = "Work.Ua Parser"
         )
     }
-}
-
-@RequiresApi(Build.VERSION_CODES.Q)
-fun testQueryManager (context: Context){
-
-    val manager = UserQueryManager(context)
-    val convertedQuery = manager.convertUserQueryInput("сміла")
-
 }
 
 @RequiresApi(Build.VERSION_CODES.O)

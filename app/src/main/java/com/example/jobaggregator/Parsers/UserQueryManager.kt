@@ -22,7 +22,7 @@ class UserQueryManager(appContext: Context) {
     @RequiresApi(Build.VERSION_CODES.Q)
     public fun convertUserInputForWorkUa(city: String =  "", jobTitle: String = ""): String{
 
-        val transliterator = Transliterator.getInstance("Any-Latin")
+        val transliterator = Transliterator.getInstance("Ukrainian-Latin/BGN")
         var workUaQuery = ""
 
         val jobFullQueryTemplate = "jobs-%s-%s"
