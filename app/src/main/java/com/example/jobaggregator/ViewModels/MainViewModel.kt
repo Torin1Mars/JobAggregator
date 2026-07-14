@@ -54,21 +54,15 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
 
     public fun checkVacanciesCount(workUaQuery: String = "", rabotaUaQuery: String = ""){
 
-        if (workUaQuery.isNotBlank()){
+        //Its ok now
+        /*if (workUaQuery.isNotBlank()){
             workUaParserVm.checkVacanciesCountByQuery(workUaQuery)
-        }
+        }*/
 
-        //TODO next
         if (rabotaUaQuery.isNotBlank()){
-            //rabotaUaViewModel
+            rabotaUaParserVm.checkVacanciesCount(rabotaUaQuery)
         }
-
-
-
 
     }
-
-
-
 
 }

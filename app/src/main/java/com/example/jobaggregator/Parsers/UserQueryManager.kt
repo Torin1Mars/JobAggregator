@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import com.example.jobaggregator.supportingData.maxCityInputLenght
 import com.example.jobaggregator.supportingData.maxJobTitleInputLenght
+import com.example.jobaggregator.supportingData.rabotaUaUrl
 
 class UserQueryManager(appContext: Context) {
 
@@ -55,13 +56,13 @@ class UserQueryManager(appContext: Context) {
     @RequiresApi(Build.VERSION_CODES.Q)
     public fun convertUserInputForRabotaUa(city: String =  "", jobTitle: String = ""): String{
 
-        val transliterator = Transliterator.getInstance("Any-Latin")
+        val transliterator = Transliterator.getInstance("Ukrainian-Latin/BGN")
         var workUaQuery = ""
 
-        val jobFullQueryTemplate = "ua/zapros/%s/%s"
+        val jobFullQueryTemplate = "$rabotaUaUrl/zapros/%s/%s"
 
-        val jobShortTemplateWithCity = "ua/zapros/%s"
-        val jobShortTemplateWithJob = "ua/zapros/%s/ukraine"
+        val jobShortTemplateWithCity = "$rabotaUaUrl/zapros/%s"
+        val jobShortTemplateWithJob = "$rabotaUaUrl/zapros/%s/ukraine"
 
         var convertedCity = ""
         var convertedJobTitle = ""

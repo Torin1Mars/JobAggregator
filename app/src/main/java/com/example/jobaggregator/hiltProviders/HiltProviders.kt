@@ -38,20 +38,14 @@ object AppProviders {
 
     @Singleton
     @Provides
-    fun provideRabotaUaParserVm(@ApplicationContext appContext: Context, webViewPool: WebViewPool ): RabotaUaParserVm{
-        return RabotaUaParserVm(appContext, webViewPool)
-    }
-
-    @Singleton
-    @Provides
     fun provideWorkUaParser(@ApplicationContext appContext: Context): WorkUaParser {
         return WorkUaParser(appContext)
     }
 
     @Singleton
     @Provides
-    //For RabotaUa parser Logic
-    fun provideWebViewPool(@ApplicationContext appContext: Context): WebViewPool {
-        return WebViewPool(appContext)
+    fun provideRabotaUaParserVm(@ApplicationContext appContext: Context): RabotaUaParserVm{
+        return RabotaUaParserVm(appContext)
     }
+
 }

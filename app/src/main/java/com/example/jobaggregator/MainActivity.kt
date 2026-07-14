@@ -41,26 +41,22 @@ class MainActivity:ComponentActivity() {
         enableEdgeToEdge()
         setContent {
 
-            WorkUaParserScreen(currentContext = applicationContext)
-
-            //RabotaUaParserScreen(currentContext = applicationContext)
+            //WorkUaParserScreen(currentContext = applicationContext)
+            RabotaUaParserScreen(currentContext = applicationContext)
         }
     }
-
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun WorkUaParserScreen(currentContext: Context) {
-    val webViewModel: WorkUaParserVm = viewModel()
+    val workUaViewModel: WorkUaParserVm = viewModel()
 
-    val vacanciesCount by webViewModel.vacanciesCount.collectAsState()
+    val vacanciesCount by workUaViewModel.vacanciesCount.collectAsState()
 
-    val isLoading by webViewModel.isLoading.collectAsState()
-    val vacancies by webViewModel.vacanciesIds.collectAsState()
-    val errorMessage by webViewModel.error.collectAsState()
-
-
+    val isLoading by workUaViewModel.isLoading.collectAsState()
+    val vacancies by workUaViewModel.vacanciesIds.collectAsState()
+    val errorMessage by workUaViewModel.error.collectAsState()
 
     val manager = UserQueryManager(currentContext)
     val convertedQuery = manager.convertUserQueryInput("сміла")
@@ -78,7 +74,7 @@ fun WorkUaParserScreen(currentContext: Context) {
             } else {
                 ButtonDefaults.buttonColors(containerColor = Color.Green)
             },
-            onClick = {mainViewModel.checkVacanciesCount(convertedQuery[0])
+            onClick = {mainViewModel.checkVacanciesCount(workUaQuery = convertedQuery[0])
 
             /*webViewModel.runParsing()*/ })
         {
@@ -95,18 +91,21 @@ fun WorkUaParserScreen(currentContext: Context) {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun RabotaUaParserScreen(currentContext: Context)  {
-    val webViewModel: RabotaUaParserVm = viewModel()
-    /*    factory = viewModelFactory {
-            initializer { RabotaUaParserVm(context.applicationContext, ) }
-        }
-    )*/
+    val rabotaUaViewModel: RabotaUaParserVm = viewModel()
 
-    val isLoading by webViewModel.isLoading.collectAsState()
-    val vacancies by webViewModel.vacanciesIds.collectAsState()
-    val errorMessage by webViewModel.error.collectAsState()
+    val vacanciesCount by rabotaUaViewModel.vacanciesCount.collectAsState()
+
+    val isLoading by rabotaUaViewModel.isLoading.collectAsState()
+    val vacancies by rabotaUaViewModel.vacanciesIds.collectAsState()
+    val errorMessage by rabotaUaViewModel.error.collectAsState()
+
+    val manager = UserQueryManager(currentContext)
+    val convertedQuery = manager.convertUserQueryInput("сміла")
+
+    val mainViewModel: MainViewModel = viewModel()
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -117,13 +116,15 @@ fun RabotaUaParserScreen(currentContext: Context)  {
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
 
-            onClick = {webViewModel.parseUserQuery("https://rabota.ua/zapros/smila")} )
+            onClick = {mainViewModel.checkVacanciesCount(rabotaUaQuery = convertedQuery[1])
+                //rabotaUaViewModel.parseUserQuery("https://rabota.ua/zapros/smila")
+            } )
         {
             Text(if (isLoading) "Loading..." else "Parse vacancies")
         }
 
         errorMessage?.let { Text("Error: $it") }
-        Text("Found ${vacancies.size} vacancies")
+        Text("Found:  $vacanciesCount vacancies")
 
         Text(modifier = Modifier.padding(bottom = 10.dp, end = 10.dp),
             fontSize = 16.sp,

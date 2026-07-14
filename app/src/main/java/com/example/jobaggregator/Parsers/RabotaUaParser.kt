@@ -13,7 +13,6 @@ import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaFullyRenderedVacancyPageLenght
-import com.example.jobaggregator.supportingData.rabotaUaMaxRuningWebViewsInOnes
 import com.example.jobaggregator.supportingData.rabotaUaParserRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 import com.fleeksoft.ksoup.Ksoup
@@ -28,9 +27,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.collections.forEach
 
-
-class WebViewPool(context: Context) {
-    private val poolSize: Int = rabotaUaMaxRuningWebViewsInOnes
+class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
+    private val poolSize: Int = allowedActiveWebViewsCount
 
     // Use applicationContext — these WebViews live as long as the pool does,
     // so holding an Activity context here would leak the Activity.
@@ -332,6 +330,17 @@ private fun getPagesCount(htmlPage: String): Int {
     if (lastPageCountElement != null){
         pagesCount = lastPageCountElement.text().toInt()
     }
+
+    return pagesCount
+}
+
+fun getVacanciesCount(htmlPage: String): Int {
+    var pagesCount : Int = 0
+
+    val document = Ksoup.parse(htmlPage)
+    val text = document.selectFirst("lib-mobile-top-info h1 + div .santa-typo-h3")?.text()
+
+    text?.let { pagesCount = it.substringBefore(" ").toInt() }
 
     return pagesCount
 }
