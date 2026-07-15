@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.Parsers.WorkUaParser
@@ -31,7 +30,6 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     private val _vacanciesJobCards = MutableStateFlow<List<JobCard>>(emptyList())
 
     val vacanciesCount = _vacanciesCount.asStateFlow()
-    val respondPagesCount: StateFlow<Int?> = _respondPagesCount.asStateFlow()
     val vacanciesIds: StateFlow<List<String>> = _vacanciesIds.asStateFlow()
     val vacanciesJobCards = _vacanciesJobCards.asStateFlow()
 
@@ -46,7 +44,7 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
         viewModelScope.launch {
             try{
                 withTimeoutOrNull (workUaParserRenderDelay){
-                    //Just for testing
+                    _isLoading.value = true
 
                     Log.d("MyTag", "Checking started")
                     workUaParser.checkVacanciesCountByQuery(convertedQuery, _vacanciesCount)
@@ -59,6 +57,8 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
 
             }catch (e: Exception){
                 Log.d("MyTag", "Parsing error acceded!")
+            }finally {
+                _isLoading.value = false
             }
         }
     }
@@ -68,7 +68,7 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
         viewModelScope.launch {
             try{
                 withTimeoutOrNull (workUaParserRenderDelay){
-                    //Just for testing
+                    _isLoading.value = true
 
                     Log.d("MyTag", "Parsing Started")
                     workUaParser.parseByQuery(query) }
@@ -78,12 +78,23 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
 
             }catch (e: Exception){
                 Log.d("MyTag", "Parsing error acceded!")
+            }finally {
+                _isLoading.value = false
             }
         }
     }
 
+    fun cleanAfterParsing(){
+        _vacanciesCount.value = null
+
+        _respondPagesCount.value = null
+        _vacanciesIds.value = emptyList()
+        _vacanciesJobCards.value = emptyList()
+    }
+
     override fun onCleared(){
-        //Do cleaning
+
     }
 
 }
+

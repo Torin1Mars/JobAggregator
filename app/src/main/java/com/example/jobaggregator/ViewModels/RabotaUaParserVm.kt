@@ -57,6 +57,8 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
             _error.value = null
 
             _runVacanciesCountChecking(searchingUrl)
+
+            _isLoading.value = false
         }
     }
 
@@ -88,12 +90,14 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun parseUserQuery(searchingUrl: String) {
+    fun runParsing(searchingUrl: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
             _runNewParsing(searchingUrl)
+
+            _isLoading.value = false
         }
     }
 
@@ -127,6 +131,14 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
 
         webViewPool!!.shutdown()
         webViewPool = null
+    }
+
+    fun cleanAfterParsing(){
+        _vacanciesCount.value = null
+
+        _respondPagesCount.value = null
+        _vacanciesIds.value = emptyList()
+        _vacanciesJobCards.value = emptyList()
     }
 
     override fun onCleared() {

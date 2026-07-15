@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,9 +43,58 @@ class MainActivity:ComponentActivity() {
         setContent {
 
             //WorkUaParserScreen(currentContext = applicationContext)
-            RabotaUaParserScreen(currentContext = applicationContext)
+            //RabotaUaParserScreen(currentContext = applicationContext)
+            CommonScreen(currentContext = applicationContext )
         }
     }
+}
+
+@RequiresApi(Build.VERSION_CODES.Q)
+@Composable
+fun CommonScreen(currentContext: Context)  {
+
+    val mainViewModel: MainViewModel = viewModel()
+
+    val workUaIsLoadingStatus by mainViewModel.workUaIsLoading.collectAsState()
+    val workUaFoundedVacanciesCount by mainViewModel.workUaVacanciesCount.collectAsState()
+    val workUaErrors by mainViewModel.workUaErrorMessage.collectAsState()
+
+
+    val rabotaUaIsLoadingStatus by mainViewModel.rabotaUaIsLoading.collectAsState()
+    val rabotaUaFoundedVacanciesCount by mainViewModel.rabotaUaVacanciesCount.collectAsState()
+    val rabotaUaErrors by mainViewModel.rabotaUaErrorMessage.collectAsState()
+
+    val manager = UserQueryManager(currentContext)
+    val convertedQuery = manager.convertUserQueryInput("сміла")
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceAround
+    ) {
+        Button(colors = if (workUaIsLoadingStatus || rabotaUaIsLoadingStatus){
+            ButtonDefaults.buttonColors(containerColor = Color.Red)
+        } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
+
+            onClick = {mainViewModel.runCheckVacanciesCount(workUaQuery = convertedQuery[0], rabotaUaQuery = convertedQuery[1]) } )
+        {
+            Text(if (workUaIsLoadingStatus) "Loading..." else "Run new parsing")
+            Text(if (rabotaUaIsLoadingStatus) "Loading..." else "Run new parsing")
+        }
+
+        workUaErrors?.let { Text("Error: $it") }
+        Text("Found:  $workUaFoundedVacanciesCount workUa vacancies")
+
+        rabotaUaErrors?.let { Text("Error: $it") }
+        Text("Found:  $rabotaUaFoundedVacanciesCount rabotaUa vacancies")
+
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), thickness = 2.dp, color = Color.Blue )
+
+        Text(modifier = Modifier.padding(bottom = 10.dp, end = 10.dp),
+            fontSize = 16.sp,
+            text = "Common Screen")
+    }
+
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -74,7 +124,7 @@ fun WorkUaParserScreen(currentContext: Context) {
             } else {
                 ButtonDefaults.buttonColors(containerColor = Color.Green)
             },
-            onClick = {mainViewModel.checkVacanciesCount(workUaQuery = convertedQuery[0])
+            onClick = {mainViewModel.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
 
             /*webViewModel.runParsing()*/ })
         {
@@ -116,7 +166,7 @@ fun RabotaUaParserScreen(currentContext: Context)  {
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
 
-            onClick = {mainViewModel.checkVacanciesCount(rabotaUaQuery = convertedQuery[1])
+            onClick = {mainViewModel.runCheckVacanciesCount(rabotaUaQuery = convertedQuery[1])
                 //rabotaUaViewModel.parseUserQuery("https://rabota.ua/zapros/smila")
             } )
         {
