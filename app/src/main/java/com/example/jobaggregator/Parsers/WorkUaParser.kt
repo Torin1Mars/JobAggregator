@@ -9,15 +9,20 @@ import androidx.annotation.RequiresApi
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.Retrofit.RetrofitObj_WorkUA
 import com.example.jobaggregator.supportingData.dateFormat
+import com.example.jobaggregator.supportingData.workUaParserCheckingPagesDelay
 import com.example.jobaggregator.supportingData.workUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.String
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 class WorkUaParser(context: Context) {
 
@@ -33,73 +38,32 @@ class WorkUaParser(context: Context) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun checkVacanciesCountByQuery(query: String, result: MutableStateFlow<Int?>){
-
+    suspend fun checkVacanciesCountByQuery(query: String, vacanciesCountFlow: MutableStateFlow<Int?>){
         val userQuery: String =  query
 
         try {
-            val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
-            val htmlPageInString = currentResponse.body()!!
+            withTimeout(workUaParserCheckingPagesDelay) {
+                var respondStatus = false
 
-            if (currentResponse.isSuccessful) {
+                while(!respondStatus){
+                    val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
+                    val htmlPageInString = currentResponse.body()!!
 
-                val howMuchPages = checkVacanciesCountInRespond(htmlPageInString)
-
-                result.value = howMuchPages
-
-                /*
-                if (howMuchPages > 1){
-
-                    ( 1 .. howMuchPages).forEach { page->
-
-                        try{
-                            val localResponse = retrofitInstance.api.getJobsInPage(userQuery = userQuery, pageNum = page)
-                            val htmlPageInString2 = localResponse.body()!!
-
-                            val jobsList = getJobsIdList(htmlPageInString2)
-                            val foundedJobs = getJobsById(jobsList)
-
-                            jobsCardsList += foundedJobs
-                            Log.d("MyTag", "Page $page vacancies - ${foundedJobs.size}")
-
-
-                        }catch (e: Exception){
-                            CoroutineScope(Dispatchers.Main).launch {
-                                Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-                            }
-
-                            Log.d("MyTag", e.message.toString())
-                        }
+                    if (currentResponse.isSuccessful) {
+                        val howMuchPages = checkVacanciesCountInRespond(htmlPageInString)
+                        vacanciesCountFlow.value = howMuchPages
+                        respondStatus = true
+                    } else {
+                        //Sending query again
+                        Log.d("MyTag", "Couldn't load initial request")
                     }
-
-                    Log.d("MyTag", jobsCardsList.size.toString())
-
-                }else{
-
-                    try {
-                        val jobsList = getJobsIdList(htmlPageInString)
-                        val foundedJobs = getJobsById(jobsList)
-
-                        jobsCardsList += foundedJobs
-
-                    }catch (e: Exception){
-                        CoroutineScope(Dispatchers.Main).launch {
-                            Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
-                        }
-
-                        Log.d("MyTag", e.message.toString())
-                    }
-                }*/
-
-            } else {
-                //Do nothing
-                CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
                 }
-                Log.d("MyTag", "Couldn't load initial request")
             }
-
-        } catch (e: Exception) {
+        }
+        catch (e: TimeoutCancellationException){
+            Log.d("MyTag", "Work Ua Checking Timeout acceded")
+        }
+        catch (e: Exception) {
             CoroutineScope(Dispatchers.Main).launch {
                 Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
             }

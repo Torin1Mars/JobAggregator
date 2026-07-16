@@ -88,11 +88,6 @@ class UserQueryManager(appContext: Context) {
         return workUaQuery
     }
 
-
-
-
-
-
     //////////////////////////////////////////ADDITIONAL////////////////////////////////////
     public fun checkUserInput (jobLocation : String, jobTitle : String): List<Boolean>{
 

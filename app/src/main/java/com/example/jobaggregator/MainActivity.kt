@@ -55,12 +55,11 @@ fun CommonScreen(currentContext: Context)  {
 
     val mainViewModel: MainViewModel = viewModel()
 
-    val workUaIsLoadingStatus by mainViewModel.workUaIsLoading.collectAsState()
+    val parsersLoadingStatus by mainViewModel.parsersBusyStatus.collectAsState()
+
     val workUaFoundedVacanciesCount by mainViewModel.workUaVacanciesCount.collectAsState()
     val workUaErrors by mainViewModel.workUaErrorMessage.collectAsState()
 
-
-    val rabotaUaIsLoadingStatus by mainViewModel.rabotaUaIsLoading.collectAsState()
     val rabotaUaFoundedVacanciesCount by mainViewModel.rabotaUaVacanciesCount.collectAsState()
     val rabotaUaErrors by mainViewModel.rabotaUaErrorMessage.collectAsState()
 
@@ -72,14 +71,13 @@ fun CommonScreen(currentContext: Context)  {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceAround
     ) {
-        Button(colors = if (workUaIsLoadingStatus || rabotaUaIsLoadingStatus){
+        Button(colors = if (parsersLoadingStatus){
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
 
             onClick = {mainViewModel.runCheckVacanciesCount(workUaQuery = convertedQuery[0], rabotaUaQuery = convertedQuery[1]) } )
         {
-            Text(if (workUaIsLoadingStatus) "Loading..." else "Run new parsing")
-            Text(if (rabotaUaIsLoadingStatus) "Loading..." else "Run new parsing")
+            Text(if (parsersLoadingStatus) "Parsers are working..." else "Run new parsing")
         }
 
         workUaErrors?.let { Text("Error: $it") }

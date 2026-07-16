@@ -2,22 +2,27 @@ package com.example.jobaggregator.ViewModels
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.data.DatabaseJobCard
 import com.example.jobaggregator.data.JobCard
 
 import com.example.jobaggregator.domain.JobsDbDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class MainViewModel @Inject constructor(@ApplicationContext context: Context,
                                         private val jobsDatabase: JobsDbDao,
-                                        private val workUaParserVm: WorkUaParserVm,
-                                        private val rabotaUaParserVm: RabotaUaParserVm): ViewModel() {
+                                        val workUaParserVm: WorkUaParserVm,
+                                        val rabotaUaParserVm: RabotaUaParserVm): ViewModel() {
 
     var currentWorkUaQuery = ""
     val workUaVacanciesCount =  workUaParserVm.vacanciesCount
@@ -34,17 +39,15 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     val rabotaUaVacanciesCards = rabotaUaParserVm.vacanciesJobCards
     val rabotaUaErrorMessage = rabotaUaParserVm.error
 
-    private fun formatJobCardsList(jobsCardList: MutableList<JobCard>): MutableList<DatabaseJobCard>{
-        val databaseJobCardList = mutableListOf<DatabaseJobCard>()
-
-        jobsCardList.forEach { card->
-            databaseJobCardList.add(DatabaseJobCard(
-                publicationDate = card.publicationDate,
-                jobCard = card
-            ))
+    val parsersBusyStatus = combine(workUaIsLoading, rabotaUaIsLoading)
+    {
+        workUaStatus, rabotaUaStatus ->
+        if (workUaStatus || rabotaUaStatus) {
+            true
+        }else{
+            false
         }
-        return databaseJobCardList
-    }
+    }.stateIn(viewModelScope, started = SharingStarted.WhileSubscribed(500), initialValue =  false )
 
     public fun runCheckVacanciesCount(workUaQuery: String = "", rabotaUaQuery: String = ""){
 
@@ -62,7 +65,6 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     }
 
     public fun runVacanciesParsing(){
-
         if (currentWorkUaQuery.isNotBlank()){
             workUaParserVm.runParsing(currentWorkUaQuery)
         }
@@ -70,6 +72,18 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
         if (currentRabotaUaQuery.isNotBlank()){
             rabotaUaParserVm.runParsing(currentRabotaUaQuery)
         }
+    }
+
+    private fun formatJobCardsList(jobsCardList: MutableList<JobCard>): MutableList<DatabaseJobCard>{
+        val databaseJobCardList = mutableListOf<DatabaseJobCard>()
+
+        jobsCardList.forEach { card->
+            databaseJobCardList.add(DatabaseJobCard(
+                publicationDate = card.publicationDate,
+                jobCard = card
+            ))
+        }
+        return databaseJobCardList
     }
 
 }

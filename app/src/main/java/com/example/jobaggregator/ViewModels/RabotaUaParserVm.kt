@@ -48,8 +48,6 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-
-
     @RequiresApi(Build.VERSION_CODES.O)
     fun checkVacanciesCount(searchingUrl: String) {
         viewModelScope.launch {

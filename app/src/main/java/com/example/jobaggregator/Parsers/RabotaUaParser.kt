@@ -26,6 +26,7 @@ import org.json.JSONTokener
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.collections.forEach
+import kotlin.coroutines.resumeWithException
 
 class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     private val poolSize: Int = allowedActiveWebViewsCount
@@ -78,7 +79,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
             withContext(Dispatchers.Main) {
                 webView.stopLoading()
 
-                webView.clearCache(false)
+                webView.clearCache(true)
                 webView.loadUrl("about:blank")
                 webView.webViewClient = object : WebViewClient() {}
             }
@@ -157,19 +158,18 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
 
                             Log.d("MyTag", "View received error")
                             webView.stopLoading()
+                            webView.clearCache(true)
                             webView.webViewClient = object : WebViewClient() {}
 
                             continuation.resume("") {}
-                            continuation.cancel(null)
-
+                            continuation.resumeWithException(
+                                Exception("WebView load failed: ${error.description}")
+                            )
+                            /*continuation.resume("") {}
+                            continuation.cancel(null)*/
                         }
                     }
                 }
-
-                /*continuation.invokeOnCancellation {
-                    //webView.reload()
-                    //webView.stopLoading()
-                }*/
 
                 webView.loadUrl(url)
             }

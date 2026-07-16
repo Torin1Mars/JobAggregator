@@ -6,6 +6,7 @@ val maxCityInputLenght: Int  = 15
 val maxJobTitleInputLenght: Int  = 100
 
 val workUaUrl: String  = "https://www.work.ua"
+val workUaParserCheckingPagesDelay = 5.seconds
 val workUaParserRenderDelay = 60.seconds
 
 val rabotaUaUrl: String  = "https://robota.ua"
