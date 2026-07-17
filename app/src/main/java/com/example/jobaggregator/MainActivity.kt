@@ -28,10 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
 
-import com.example.jobaggregator.ViewModels.RabotaUaParserVm
-import com.example.jobaggregator.ViewModels.WorkUaParserVm
 import dagger.hilt.android.AndroidEntryPoint
-
 
 @AndroidEntryPoint
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -51,11 +48,11 @@ class MainActivity:ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun CommonScreen(currentContext: Context)  {
-
+fun CommonScreen(currentContext: Context) {
     val mainViewModel: MainViewModel = viewModel()
 
     val parsersLoadingStatus by mainViewModel.parsersBusyStatus.collectAsState()
+    val vacanciesCountHasBeenChecked by mainViewModel.vacanciesCountHasBeenChecked.collectAsState()
 
     val workUaFoundedVacanciesCount by mainViewModel.workUaVacanciesCount.collectAsState()
     val workUaErrors by mainViewModel.workUaErrorMessage.collectAsState()
@@ -71,6 +68,7 @@ fun CommonScreen(currentContext: Context)  {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceAround
     ) {
+        // First functional button
         Button(colors = if (parsersLoadingStatus){
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
@@ -78,6 +76,16 @@ fun CommonScreen(currentContext: Context)  {
             onClick = {mainViewModel.runCheckVacanciesCount(workUaQuery = convertedQuery[0], rabotaUaQuery = convertedQuery[1]) } )
         {
             Text(if (parsersLoadingStatus) "Parsers are working..." else "Run new parsing")
+        }
+
+        // Secound functional button
+        Button(colors = if (!vacanciesCountHasBeenChecked ){
+            ButtonDefaults.buttonColors(containerColor = Color.Red)
+        } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
+
+            onClick = {mainViewModel.runVacanciesParsing()} )
+        {
+            Text(if (vacanciesCountHasBeenChecked ) "Run parsing" else "Run new parsing")
         }
 
         workUaErrors?.let { Text("Error: $it") }
@@ -95,91 +103,14 @@ fun CommonScreen(currentContext: Context)  {
 
 }
 
-@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun WorkUaParserScreen(currentContext: Context) {
-    val workUaViewModel: WorkUaParserVm = viewModel()
-
-    val vacanciesCount by workUaViewModel.vacanciesCount.collectAsState()
-
-    val isLoading by workUaViewModel.isLoading.collectAsState()
-    val vacancies by workUaViewModel.vacanciesIds.collectAsState()
-    val errorMessage by workUaViewModel.error.collectAsState()
-
-    val manager = UserQueryManager(currentContext)
-    val convertedQuery = manager.convertUserQueryInput("сміла")
-
-    val mainViewModel: MainViewModel = viewModel()
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceAround
-    ) {
-        Button(
-            colors = if (isLoading) {
-                ButtonDefaults.buttonColors(containerColor = Color.Red)
-            } else {
-                ButtonDefaults.buttonColors(containerColor = Color.Green)
-            },
-            onClick = {mainViewModel.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
-
-            /*webViewModel.runParsing()*/ })
-        {
-            Text(if (isLoading) "Loading..." else "Parse vacancies")
-        }
-
-        errorMessage?.let { Text("Error: $it") }
-        Text("Found:  $vacanciesCount vacancies")
-
-        Text(modifier = Modifier.padding(bottom = 10.dp, end = 10.dp),
-            fontSize = 16.sp,
-            text = "Work.Ua Parser"
-        )
-    }
-}
-
-@RequiresApi(Build.VERSION_CODES.Q)
-@Composable
-fun RabotaUaParserScreen(currentContext: Context)  {
-    val rabotaUaViewModel: RabotaUaParserVm = viewModel()
-
-    val vacanciesCount by rabotaUaViewModel.vacanciesCount.collectAsState()
-
-    val isLoading by rabotaUaViewModel.isLoading.collectAsState()
-    val vacancies by rabotaUaViewModel.vacanciesIds.collectAsState()
-    val errorMessage by rabotaUaViewModel.error.collectAsState()
-
-    val manager = UserQueryManager(currentContext)
-    val convertedQuery = manager.convertUserQueryInput("сміла")
-
-    val mainViewModel: MainViewModel = viewModel()
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceAround
-    ) {
-        Button(colors = if (isLoading){
-            ButtonDefaults.buttonColors(containerColor = Color.Red)
-        } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
-
-            onClick = {mainViewModel.runCheckVacanciesCount(rabotaUaQuery = convertedQuery[1])
-                //rabotaUaViewModel.parseUserQuery("https://rabota.ua/zapros/smila")
-            } )
-        {
-            Text(if (isLoading) "Loading..." else "Parse vacancies")
-        }
-
-        errorMessage?.let { Text("Error: $it") }
-        Text("Found:  $vacanciesCount vacancies")
-
-        Text(modifier = Modifier.padding(bottom = 10.dp, end = 10.dp),
-            fontSize = 16.sp,
-            text = "Rabota.Ua Parser")
-    }
+fun MainScreenUserInputBlock(modifier: Modifier) {
 
 }
 
+@Composable
+fun MainScreenFunctionButtonsBlock(modifier: Modifier)  {
 
+
+}
 

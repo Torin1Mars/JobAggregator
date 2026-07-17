@@ -10,8 +10,9 @@ val workUaParserCheckingPagesDelay = 5.seconds
 val workUaParserRenderDelay = 60.seconds
 
 val rabotaUaUrl: String  = "https://robota.ua"
-val rabotaUaFullyRenderedVacancyPageLenght = 120_000
-val rabotaUaMaxRuningWebViewsInOnes = 7
+val rabotaUaFullyRenderedGeneralPageLenght = 250_000
+val rabotaUaFullyRenderedVacancyPageLenght = 100_000
+val rabotaUaMaxRuningWebViewsInOnes = 6
 val rabotaUaParserRenderDelay = 20.seconds
 
 

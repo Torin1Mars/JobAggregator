@@ -8,14 +8,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.Parsers.WebViewPool
 import com.example.jobaggregator.Parsers.checkHowManyPagesInRespond
-import com.example.jobaggregator.Parsers.getVacanciesCount
 import com.example.jobaggregator.Parsers.parseJobCardsIds
 import com.example.jobaggregator.Parsers.parseVacanciesJobCards
+import com.example.jobaggregator.Parsers.runVacanciesCountChecking
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.rabotaUaMaxRuningWebViewsInOnes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.coroutineScope
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +25,6 @@ import javax.inject.Inject
 @HiltViewModel
 class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Context) : ViewModel()
 {
-
     private val context = appContext
     private var webViewPool :WebViewPool? = null
 
@@ -54,38 +52,17 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
             _isLoading.value = true
             _error.value = null
 
-            _runVacanciesCountChecking(searchingUrl)
+            webViewPool = WebViewPool(context, 1)
 
+            _vacanciesCount.value = runVacanciesCountChecking(searchingUrl, webViewPool!!)
+
+            webViewPool!!.shutdown()
+            webViewPool = null
             _isLoading.value = false
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private suspend fun _runVacanciesCountChecking(userQuery: String){
 
-        webViewPool = WebViewPool(context, 1)
-
-        var vacanciesCount = 0
-        vacanciesCount = coroutineScope {
-            var count :Int = 0
-
-            val html = webViewPool!!.renderPage(userQuery)
-
-            try{
-                count = getVacanciesCount(html)
-            }catch (e: Exception){
-                Log.d("MyTag", "Error while checking vacancies count")
-                Log.d("MyTag", e.message.toString())
-            }
-
-            return@coroutineScope count
-        }
-
-        _vacanciesCount.value = vacanciesCount
-
-        webViewPool!!.shutdown()
-        webViewPool = null
-    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun runParsing(searchingUrl: String) {
@@ -118,10 +95,10 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
             _respondPagesCount.value = null
         }
 
-        //Parsing Exactly vacancies
+        //Run parsing vacancies cards
         if (vacanciesIds.value.isNotEmpty()){
             Log.d("MyTag", "Vacancy parsing started")
-            _vacanciesJobCards.value = parseVacanciesJobCards(webViewPool!!, vacanciesIds.value)
+            webViewPool?.let { it-> _vacanciesJobCards.value = parseVacanciesJobCards(it, vacanciesIds.value)}
         }
 
         Log.d("MyTag", "All vacancies parsing finished !!!")

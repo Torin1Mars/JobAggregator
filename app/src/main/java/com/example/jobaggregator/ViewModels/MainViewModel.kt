@@ -12,7 +12,9 @@ import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.domain.JobsDbDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -38,6 +40,20 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     val rabotaUaIsLoading = rabotaUaParserVm.isLoading
     val rabotaUaVacanciesCards = rabotaUaParserVm.vacanciesJobCards
     val rabotaUaErrorMessage = rabotaUaParserVm.error
+
+    //_________________________________________________________________________________
+    var vacanciesCountHasBeenChecked = combine (workUaIsLoading, rabotaUaIsLoading) {
+
+        val workUaCount = workUaVacanciesCount.value?: 0
+        val rabotaUaCount = workUaVacanciesCount.value?: 0
+
+        if(workUaCount>0 || rabotaUaCount>0){
+            if (!workUaIsLoading.value && !rabotaUaIsLoading.value){
+                return@combine true
+            }
+        }
+        return@combine false
+    }.stateIn(viewModelScope, started = SharingStarted.WhileSubscribed(500), initialValue =  false )
 
     val parsersBusyStatus = combine(workUaIsLoading, rabotaUaIsLoading)
     {

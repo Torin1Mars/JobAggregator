@@ -3,6 +3,7 @@ package com.example.jobaggregator.Parsers
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import android.view.KeyEvent
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -12,6 +13,7 @@ import androidx.annotation.RequiresApi
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
+import com.example.jobaggregator.supportingData.rabotaUaFullyRenderedGeneralPageLenght
 import com.example.jobaggregator.supportingData.rabotaUaFullyRenderedVacancyPageLenght
 import com.example.jobaggregator.supportingData.rabotaUaParserRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaUrl
@@ -26,7 +28,6 @@ import org.json.JSONTokener
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.collections.forEach
-import kotlin.coroutines.resumeWithException
 
 class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     private val poolSize: Int = allowedActiveWebViewsCount
@@ -69,8 +70,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     }
 
     suspend fun renderPage(
-        url: String
-    ): String {
+        url: String, fullyRenderedPageLength : Int): String {
         if (!initialized) warmUp()
 
         var webView = pool.receive() // suspends here if all views are busy
@@ -91,7 +91,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
             while (renderedPage.isBlank()) {
                 renderedPage = try {
                     withTimeout(rabotaUaParserRenderDelay) {
-                        fetchHtml(webView, url, rabotaUaFullyRenderedVacancyPageLenght)
+                        fetchHtml(webView, url, fullyRenderedPageLength)
                     }
                 } catch (e: TimeoutCancellationException) {
                     Log.d("MyTag", "Timeout acceded!")
@@ -126,6 +126,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     ): String = withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { continuation ->
                 webView.webViewClient = object : WebViewClient() {
+
                     override fun onPageFinished(view: WebView, finishedUrl: String) {
                         view.evaluateJavascript(
                             "(function(){return document.documentElement.outerHTML;})();"
@@ -162,13 +163,36 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
                             webView.webViewClient = object : WebViewClient() {}
 
                             continuation.resume("") {}
-                            continuation.resumeWithException(
+                            /*continuation.resumeWithException(
                                 Exception("WebView load failed: ${error.description}")
-                            )
+                            )*/
                             /*continuation.resume("") {}
                             continuation.cancel(null)*/
                         }
                     }
+
+                    override fun onUnhandledKeyEvent(view: WebView?, event: KeyEvent?) {
+                        super.onUnhandledKeyEvent(view, event)
+
+                        if (continuation.isActive) {
+                            /*continuation.resumeWithException(
+                                Exception("WebView load failed: ${error.description}")
+                            )*/
+
+                            Log.d("MyTag", "View received error2")
+                            webView.stopLoading()
+                            webView.clearCache(true)
+                            webView.webViewClient = object : WebViewClient() {}
+
+                            continuation.resume("") {}
+                            /*continuation.resumeWithException(
+                                Exception("WebView load failed: ${error.description}")
+                            )*/
+                            /*continuation.resume("") {}
+                            continuation.cancel(null)*/
+                        }
+                    }
+
                 }
 
                 webView.loadUrl(url)
@@ -222,7 +246,7 @@ suspend fun parseVacanciesJobCards(
             val currentPageQueryLink = jobCardsQueries[pageIndex]
 
             if (!currentPageQueryLink.isBlank()) {
-                val html = pool.renderPage(currentPageQueryLink)
+                val html = pool.renderPage(currentPageQueryLink, rabotaUaFullyRenderedVacancyPageLenght)
                 val currentVacancyCard: JobCard? = parseVacancyCard(html)
 
                 currentVacancyCard?.let { parsedVacancies.add(currentVacancyCard) }
@@ -244,7 +268,7 @@ suspend fun checkHowManyPagesInRespond(
         var count :Int = 0
 
         Log.d("MyTag", searchingUrl)
-        val html = pool.renderPage(searchingUrl)
+        val html = pool.renderPage(searchingUrl, rabotaUaFullyRenderedGeneralPageLenght)
 
         try{
             count = getPagesCount(html)
@@ -273,7 +297,7 @@ suspend fun parseJobCardsIds(
 
                 suspend fun renderHtmlPage(index: Int) {
                     val url = buildPageUrl(searchUrl, index)
-                    renderedRawHtml = pool.renderPage(url)
+                    renderedRawHtml = pool.renderPage(url, rabotaUaFullyRenderedGeneralPageLenght)
                 }
 
                 renderHtmlPage(currentPageIndex)
@@ -334,13 +358,39 @@ private fun getPagesCount(htmlPage: String): Int {
     return pagesCount
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
+public suspend fun runVacanciesCountChecking(userQuery: String, webViewPool: WebViewPool): Int{
+
+    var vacanciesCount = 0
+    vacanciesCount = coroutineScope {
+        var count :Int = 0
+
+        val html = webViewPool.renderPage(userQuery, rabotaUaFullyRenderedGeneralPageLenght)
+
+        try{
+            count = getVacanciesCount(html)
+        }catch (e: Exception){
+            Log.d("MyTag", "Error while checking vacancies count")
+            Log.d("MyTag", e.message.toString())
+        }
+
+        return@coroutineScope count
+    }
+
+    return vacanciesCount
+}
+
 fun getVacanciesCount(htmlPage: String): Int {
     var pagesCount : Int = 0
 
     val document = Ksoup.parse(htmlPage)
     val text = document.selectFirst("lib-mobile-top-info h1 + div .santa-typo-h3")?.text()
 
-    text?.let { pagesCount = it.substringBefore(" ").toInt() }
+    text?.let {
+        pagesCount = it.substringBefore(" ").toInt()
+
+        // Rabota Ua website propose advertisement vacancies in a search result , we are not going to parse them
+        pagesCount = pagesCount/2}
 
     return pagesCount
 }
