@@ -14,6 +14,9 @@ interface JobsDbDao {
     @Query("SELECT * FROM JobsDB")
     fun get_all_Jobs (): Flow<List<DatabaseJobCard>>
 
+    @Query("SELECT * FROM JobsDB")
+    fun get_all_JobsList (): List<DatabaseJobCard>
+
     //Adding
     @Insert
     fun addOneJobCard(newJobCard: DatabaseJobCard): Unit

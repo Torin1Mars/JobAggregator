@@ -12,17 +12,23 @@ import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.domain.JobsDbDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.toCollection
+import kotlinx.coroutines.launch
+import okhttp3.internal.wait
 import javax.inject.Inject
+import kotlin.coroutines.coroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class MainViewModel @Inject constructor(@ApplicationContext context: Context,
-                                        private val jobsDatabase: JobsDbDao,
+                                        private val vacanciesDatabase: JobsDbDao,
                                         val workUaParserVm: WorkUaParserVm,
                                         val rabotaUaParserVm: RabotaUaParserVm): ViewModel() {
 
@@ -42,7 +48,7 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     val rabotaUaErrorMessage = rabotaUaParserVm.error
 
     //_________________________________________________________________________________
-    var vacanciesCountHasBeenChecked = combine (workUaIsLoading, rabotaUaIsLoading) {
+    val vacanciesCountHasBeenChecked = combine (workUaIsLoading, rabotaUaIsLoading) {
 
         val workUaCount = workUaVacanciesCount.value?: 0
         val rabotaUaCount = workUaVacanciesCount.value?: 0
@@ -82,12 +88,28 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
 
     public fun runVacanciesParsing(){
         if (currentWorkUaQuery.isNotBlank()){
-            workUaParserVm.runParsing(currentWorkUaQuery)
+            workUaParserVm.runParsing(currentWorkUaQuery, {addParsedVacanciesToDb()})
         }
 
         if (currentRabotaUaQuery.isNotBlank()){
             rabotaUaParserVm.runParsing(currentRabotaUaQuery)
         }
+    }
+
+    private fun addParsedVacanciesToDb(){
+        //TODO it doesent working now , its need to review
+
+        //TODO Its need to refactor later to allow this function recive parsed vacancies list
+        //TODO it doesent working now , its need to review
+        CoroutineScope(Dispatchers.IO).launch {
+            val formatedList = formatJobCardsList(workUaVacanciesCards.value.toMutableList())
+            //TODO Its need to delete it later
+            vacanciesDatabase.deleteDb()
+            vacanciesDatabase.addJobCardList(formatedList)
+
+            Log.d("MyTag", "OK")
+        }
+
     }
 
     private fun formatJobCardsList(jobsCardList: MutableList<JobCard>): MutableList<DatabaseJobCard>{

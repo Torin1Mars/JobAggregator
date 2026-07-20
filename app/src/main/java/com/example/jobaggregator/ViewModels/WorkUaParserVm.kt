@@ -64,15 +64,18 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun runParsing(query: String){
+    fun runParsing(query: String, addParsedVacanciesToDb:()-> Unit){
         viewModelScope.launch {
             try{
                 withTimeoutOrNull (workUaParserRenderDelay){
                     _isLoading.value = true
 
                     Log.d("MyTag", "Parsing Started")
-                    workUaParser.parseByQuery(query) }
+                    workUaParser.parseByQuery(query)
+                    _vacanciesJobCards.value = workUaParser.getParsedJobsCardsList()
 
+                    addParsedVacanciesToDb()
+                }
             }catch (e: TimeoutCancellationException){
                 Log.d("MyTag", "Timeout acceded!")
 

@@ -10,7 +10,6 @@ import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.Retrofit.RetrofitObj_WorkUA
 import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.workUaParserCheckingPagesDelay
-import com.example.jobaggregator.supportingData.workUaUrl
 import com.fleeksoft.ksoup.Ksoup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,8 +20,6 @@ import kotlinx.coroutines.withTimeout
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.String
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 class WorkUaParser(context: Context) {
 
@@ -33,7 +30,7 @@ class WorkUaParser(context: Context) {
 
     private val jobsCardsList = mutableListOf<JobCard>()
 
-    fun getJobsCardsList(): MutableList<JobCard>{
+    fun getParsedJobsCardsList(): MutableList<JobCard>{
         return jobsCardsList
     }
 
@@ -78,18 +75,13 @@ class WorkUaParser(context: Context) {
         val document = Ksoup.parse(htmlString)
 
         val countElement = document.select("div.mt-8.text-default-7 > span:first-child").first()
-
-
         countElement.let { it-> pagesCount = it?.text()?.substringBefore(" ")!!.toInt() }
 
         return pagesCount
     }
 
-
-
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun parseByQuery(query: String){
-
         val userQuery: String = query
 
         try {
@@ -101,7 +93,6 @@ class WorkUaParser(context: Context) {
                 val howMuchPages = checkIfSeveralPages(htmlPageInString)
 
                 if (howMuchPages > 1){
-
                     ( 1 .. howMuchPages).forEach { page->
 
                         try{
@@ -127,7 +118,6 @@ class WorkUaParser(context: Context) {
                     Log.d("MyTag", jobsCardsList.size.toString())
 
                 }else{
-
                     try {
                         val jobsList = getJobsIdList(htmlPageInString)
                         val foundedJobs = getJobsById(jobsList)

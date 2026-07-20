@@ -114,4 +114,11 @@ dependencies {
     //Apium
     implementation("io.appium:java-client:9.2.0")
 
+
+    // Preferences DataStore (Like SharedPreferences but safe and asynchronous)
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
+
+    // Core DataStore dependency (Optional: Only if you need Proto DataStore)
+    implementation("androidx.datastore:datastore-core:1.2.1")
+
 }

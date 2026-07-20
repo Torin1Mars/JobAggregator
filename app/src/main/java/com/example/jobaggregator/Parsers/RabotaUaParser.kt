@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
@@ -44,18 +45,37 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     private val initMutex = Mutex()
     private var initialized = false
 
-    /** Creates the WebViews once. Safe to call multiple times — only runs once. */
+    /* Creates the WebViews once. Safe to call multiple times — only runs once. */
     suspend fun warmUp() = initMutex.withLock {
         //if (pool.equals(10)) return@withLock
         if (initialized) return@withLock
 
         withContext(Dispatchers.Main) {
+            // Clear any state left over from a previous run
+            WebStorage.getInstance().deleteAllData()
+            android.webkit.CookieManager.getInstance().removeAllCookies(null)
+
             repeat(poolSize) {
                 pool.trySend(createWebView())
             }
         }
         initialized = true
         Log.d("MyTag", "Warmed up $poolSize WebViews")
+    }
+
+    suspend fun warmUp2() = initMutex.withLock {
+        if (initialized) return@withLock
+
+        withContext(Dispatchers.Main) {
+            // Clear any state left over from a previous run
+            WebStorage.getInstance().deleteAllData()
+            android.webkit.CookieManager.getInstance().removeAllCookies(null)
+
+            repeat(poolSize) {
+                pool.trySend(createWebView())
+            }
+        }
+        initialized = true
     }
 
     private fun createWebView(): WebView = WebView(appContext).apply {
@@ -100,7 +120,6 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
                     Log.d("MyTag", "Other exception exceeded!")
                     ""
                 }
-
                 if (renderedPage.isNotEmpty()) break // success, stop retrying
                 else resetForRetry()
             }
@@ -111,11 +130,72 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
             // listener so a late/dangling JS callback from this load can't
             // fire into the next borrower's continuation.
             withContext(Dispatchers.Main) {
+
+                //TODO will try it
                 webView.stopLoading()
+                webView.loadUrl("about:blank")
+                webView.clearHistory()
+                webView.clearCache(true)
                 webView.webViewClient = object : WebViewClient() {}
             }
 
             pool.send(webView) // hand it back — wakes up the next waiter, if any
+        }
+    }
+
+    private class PooledWebView(var webView: WebView, var loadCount: Int = 0)
+    private val maxLoadsBeforeRecycle = 10
+
+
+    suspend fun renderPage2(url: String, fullyRenderedPageLength: Int): String {
+        if (!initialized) warmUp2()
+        val pooled = pool.receive()
+
+        suspend fun resetForRetry() {
+            withContext(Dispatchers.Main) {
+                pooled.stopLoading()
+
+                pooled.clearCache(true)
+                pooled.loadUrl("about:blank")
+                pooled.webViewClient = object : WebViewClient() {}
+            }
+        }
+
+        return try {var renderedPage = ""
+
+            while (renderedPage.isBlank()) {
+                renderedPage = try {
+                    withTimeout(rabotaUaParserRenderDelay) {
+                        fetchHtml(pooled, url, fullyRenderedPageLength)
+                    }
+                } catch (e: TimeoutCancellationException) {
+                    Log.d("MyTag", "Timeout acceded!")
+                    ""
+                } catch (e: Exception) {
+                    Log.d("MyTag", "Other exception exceeded!")
+                    ""
+                }
+                if (renderedPage.isNotEmpty()) break // success, stop retrying
+                else resetForRetry()
+            }
+
+            renderedPage
+        } finally {
+            pooled.loadCount++
+            withContext(Dispatchers.Main) {
+                if (pooled.loadCount >= maxLoadsBeforeRecycle) {
+                    destroyWebViewSafely(pooled.webView)
+                    pooled.webView = createWebView()
+                    pooled.loadCount = 0
+                } else {
+                    pooled.webView.stopLoading()
+                    pooled.webView.loadUrl("about:blank")
+                    pooled.webView.clearHistory()
+                    pooled.webView.clearCache(true)
+                    pooled.webView.webViewClient = object : WebViewClient() {}
+                }
+            }
+            pool.send(pooled)
         }
     }
 
