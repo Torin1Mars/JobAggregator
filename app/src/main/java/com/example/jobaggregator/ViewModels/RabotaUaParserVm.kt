@@ -56,7 +56,7 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
 
             _vacanciesCount.value = runVacanciesCountChecking(searchingUrl, webViewPool!!)
 
-            webViewPool!!.shutdown()
+            webViewPool!!.closeWholePool()
             webViewPool = null
             _isLoading.value = false
         }
@@ -104,11 +104,12 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
         Log.d("MyTag", "All vacancies parsing finished !!!")
         Log.d("MyTag", "${vacanciesJobCards.value.size}")
 
-        webViewPool!!.shutdown()
-        webViewPool = null
+        webViewPool!!.closeWholePool()
+
+        resetAfterParsing()
     }
 
-    fun cleanAfterParsing(){
+    fun resetAfterParsing(){
         _vacanciesCount.value = null
 
         _respondPagesCount.value = null
@@ -117,7 +118,7 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
     }
 
     override fun onCleared() {
-        webViewPool?.let { viewModelScope.launch { it.shutdown();
+        webViewPool?.let { viewModelScope.launch { it.closeWholePool();
             webViewPool = null }  }
     }
 }

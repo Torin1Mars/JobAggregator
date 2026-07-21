@@ -87,9 +87,9 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     }
 
     public fun runVacanciesParsing(){
-        if (currentWorkUaQuery.isNotBlank()){
+        /*if (currentWorkUaQuery.isNotBlank()){
             workUaParserVm.runParsing(currentWorkUaQuery, {addParsedVacanciesToDb()})
-        }
+        }*/
 
         if (currentRabotaUaQuery.isNotBlank()){
             rabotaUaParserVm.runParsing(currentRabotaUaQuery)
@@ -97,13 +97,10 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     }
 
     private fun addParsedVacanciesToDb(){
-        //TODO it doesent working now , its need to review
 
-        //TODO Its need to refactor later to allow this function recive parsed vacancies list
-        //TODO it doesent working now , its need to review
         CoroutineScope(Dispatchers.IO).launch {
             val formatedList = formatJobCardsList(workUaVacanciesCards.value.toMutableList())
-            //TODO Its need to delete it later
+
             vacanciesDatabase.deleteDb()
             vacanciesDatabase.addJobCardList(formatedList)
 

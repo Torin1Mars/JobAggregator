@@ -13,7 +13,9 @@ val rabotaUaUrl: String  = "https://robota.ua"
 val rabotaUaFullyRenderedGeneralPageLenght = 250_000
 val rabotaUaFullyRenderedVacancyPageLenght = 100_000
 val rabotaUaMaxRuningWebViewsInOnes = 6
+val rabotaUaMaxRendersBeforeRecycle = 4
 val rabotaUaParserRenderDelay = 20.seconds
+
 
 
 
