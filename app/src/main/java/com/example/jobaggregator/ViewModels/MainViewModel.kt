@@ -14,16 +14,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.toCollection
 import kotlinx.coroutines.launch
-import okhttp3.internal.wait
 import javax.inject.Inject
-import kotlin.coroutines.coroutineContext
 
 @RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel

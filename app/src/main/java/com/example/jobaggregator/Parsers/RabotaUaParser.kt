@@ -17,9 +17,9 @@ import com.example.jobaggregator.supportingData.dateFormat
 import com.example.jobaggregator.supportingData.monthUa
 import com.example.jobaggregator.supportingData.rabotaUaFullyRenderedGeneralPageLenght
 import com.example.jobaggregator.supportingData.rabotaUaFullyRenderedVacancyPageLenght
-import com.example.jobaggregator.supportingData.rabotaUaMaxRendersBeforeRecycle
 import com.example.jobaggregator.supportingData.rabotaUaParserRenderDelay
 import com.example.jobaggregator.supportingData.rabotaUaUrl
+import com.example.jobaggregator.supportingData.rabotaUaWebViewRenderAttempts
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
@@ -31,8 +31,7 @@ import org.json.JSONTokener
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.collections.forEach
-import kotlin.inc
-import kotlin.text.compareTo
+import kotlin.coroutines.resumeWithException
 
 class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     private val poolSize: Int = allowedActiveWebViewsCount
@@ -42,15 +41,13 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     private val appContext = context.applicationContext
 
     // The channel IS the pool: capacity = poolSize, pre-filled with WebViews
-    //TODO Changing here:
-    //private val pool = Channel<WebView>(capacity = poolSize)
-    private val pool = Channel<PooledWebView>(capacity = poolSize)
+    private val pool = Channel<WebView>(capacity = poolSize)
 
     private val initMutex = Mutex()
     private var initialized = false
 
-    /* Creates the WebViews once. Safe to call multiple times — only runs once. */
-    /*suspend fun warmUp() = initMutex.withLock {
+    // Creates the WebViews once. Safe to call multiple times — only runs once.
+    suspend fun warmUp() = initMutex.withLock {
         //if (pool.equals(10)) return@withLock
         if (initialized) return@withLock
 
@@ -65,45 +62,24 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         }
         initialized = true
         Log.d("MyTag", "Warmed up $poolSize WebViews")
-    }*/
-
-    /* Creates the WebViews once. Safe to call multiple times — only runs once. */
-    suspend fun warmUp2() = initMutex.withLock {
-        //if (pool.equals(10)) return@withLock
-        if (initialized) return@withLock
-
-        withContext(Dispatchers.Main) {
-            // Clear any state left over from a previous run
-            WebStorage.getInstance().deleteAllData()
-            android.webkit.CookieManager.getInstance().removeAllCookies(null)
-
-            repeat(poolSize) {
-                pool.trySend(createPulledInstance())
-            }
-        }
-        initialized = true
-        Log.d("MyTag", "Warmed up $poolSize WebViews")
-    }
-
-    private fun createPulledInstance(): PooledWebView {
-        return PooledWebView(webView = createWebView())
     }
 
     private fun createWebView(): WebView = WebView(appContext).apply {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
 
-        settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+
+        //Todo Its cause Error :
+        settings.cacheMode = WebSettings.LOAD_CACHE_ONLY
 
         settings.userAgentString =
             "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
     }
 
-
-    /*suspend fun renderPage(
+    suspend fun renderPage(
         url: String, fullyRenderedPageLength : Int): String {
-        if (!initialized) warmUp2()
+        if (!initialized) warmUp()
 
         var webView = pool.receive() // suspends here if all views are busy
 
@@ -131,7 +107,20 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         return try {
             var renderedPage = ""
 
-            while (renderedPage.isBlank()) {
+            var renderAttempts = rabotaUaWebViewRenderAttempts
+
+            while (renderedPage.isEmpty()) {
+
+                //TODO Its okay , need to continue next here :
+                //I need recreate view and render page again with this new view next
+
+                if (renderAttempts ==0){
+
+                    recreateWebView(webView)
+                    renderAttempts = rabotaUaWebViewRenderAttempts
+                }
+
+
                 renderedPage = try {
                     withTimeout(rabotaUaParserRenderDelay) {
                         fetchHtml(webView, url, fullyRenderedPageLength)
@@ -144,7 +133,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
                     ""
                 }
                 if (renderedPage.isNotEmpty()) break // success, stop retrying
-                else resetForRetry()
+                else resetForRetry(); renderAttempts -=1
             }
 
             renderedPage
@@ -155,80 +144,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
             renewView()
 
             pool.send(webView) // hand it back — wakes up the next waiter, if any
-        }*/
-
-    suspend fun renderPage2(url: String, fullyRenderedPageLength: Int): String {
-        if (!initialized) warmUp2()
-        val pooled = pool.receive()
-
-        suspend fun resetForRetry(webView: WebView) {
-            withContext(Dispatchers.Main) {
-                webView.stopLoading()
-
-                webView.clearCache(true)
-                webView.loadUrl("about:blank")
-                webView.webViewClient = object : WebViewClient() {}
-
-                webView.webChromeClient = null
-            }
         }
-
-        suspend fun renewWebView(webView: WebView) {
-            withContext(Dispatchers.Main) {
-                //Clearing current View after successful
-                webView.stopLoading()
-                webView.loadUrl("about:blank")
-                webView.clearHistory()
-                webView.clearCache(false)
-                webView.webViewClient = object : WebViewClient() {}
-
-                webView.webChromeClient = null
-            }
-        }
-
-        return try {
-            var renderedPage = ""
-
-            while (renderedPage.isBlank()) {
-                renderedPage = try {
-                    withTimeout(rabotaUaParserRenderDelay) {
-                        fetchHtml(pooled.webView, url, fullyRenderedPageLength)
-                    }
-                } catch (e: TimeoutCancellationException) {
-                    Log.d("MyTag", "Timeout acceded!")
-                    ""
-                } catch (e: Exception) {
-                    Log.d("MyTag", "Other exception exceeded!")
-                    ""
-                }
-                if (renderedPage.isNotEmpty()) break // success, stop retrying
-                else resetForRetry(pooled.webView)
-            }
-
-            renderedPage
-        } finally {
-            pooled.initialLoadCount++
-            withContext(Dispatchers.Main) {
-                if (pooled.initialLoadCount >= rabotaUaMaxRendersBeforeRecycle) {
-                    replacePooledWebView(pooled)
-                } else {
-                    renewWebView(pooled.webView)
-                }
-            }
-            pool.send(pooled)
-        }
-    }
-
-    private suspend fun replacePooledWebView(pooled: PooledWebView) {
-        destroyWebViewSafely(pooled.webView)
-
-        withContext(Dispatchers.Main) {
-            pooled.webView = createWebView()
-        }
-
-        pooled.initialLoadCount = 0
-        pool.send(pooled)
-        Log.d("MyTag", "Removed and replaced 1 PooledWebView")
     }
 
     private suspend fun fetchHtml(
@@ -259,52 +175,58 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
                     }
                 }
 
+                val interrupt: (String) -> Unit = { emptyResult ->
+                    if (continuation.isActive) {
+                        webView.stopLoading()
+                        webView.clearCache(true)
+                        webView.webViewClient = object : WebViewClient() {}
+                        continuation.resume(emptyResult){}
+                    }
+                }
+
                 override fun onReceivedError(
                     view: WebView,
                     request: WebResourceRequest,
                     error: WebResourceError
                 ) {
-                    if (continuation.isActive) {
-                        /*continuation.resumeWithException(
-                                Exception("WebView load failed: ${error.description}")
-                            )*/
+                    if (!request.isForMainFrame) return
+                    Log.d("MyTag", "View received error")
+                    interrupt("")
+                }
 
+                /*override fun onReceivedError(
+                    view: WebView,
+                    request: WebResourceRequest,
+                    error: WebResourceError
+                ) {
+                    if (continuation.isActive) {
                         Log.d("MyTag", "View received error")
                         webView.stopLoading()
                         webView.clearCache(true)
                         webView.webViewClient = object : WebViewClient() {}
 
-                        continuation.resume("") {}
+                        if (continuation.isActive) {
+                            Log.d("MyTag", "Here")
+                            continuation.resume("") {}
+                        }
+
                         /*continuation.resumeWithException(
-                                Exception("WebView load failed: ${error.description}")
-                            )*/
-                        /*continuation.resume("") {}
-                            continuation.cancel(null)*/
+                            Exception("WebView load failed: ${error.description}")
+                        )
+                        continuation.resume("") {}*/
                     }
-                }
+                }*/
 
-                override fun onUnhandledKeyEvent(view: WebView?, event: KeyEvent?) {
-                    super.onUnhandledKeyEvent(view, event)
 
-                    if (continuation.isActive) {
-                        /*continuation.resumeWithException(
-                                Exception("WebView load failed: ${error.description}")
-                            )*/
+            }
 
-                        Log.d("MyTag", "View received error2")
-                        webView.stopLoading()
-                        webView.clearCache(true)
-                        webView.webViewClient = object : WebViewClient() {}
-
-                        continuation.resume("") {}
-                        /*continuation.resumeWithException(
-                                Exception("WebView load failed: ${error.description}")
-                            )*/
-                        /*continuation.resume("") {}
-                            continuation.cancel(null)*/
-                    }
-                }
-
+            //NEW :
+            // If the outer withTimeoutOrNull cancels us first, stop the WebView instead
+            // of letting it keep loading/evaluating JS in the background pool
+            continuation.invokeOnCancellation {
+                webView.stopLoading()
+                webView.clearCache(true)
+                webView.webViewClient = object : WebViewClient() {}
             }
 
             webView.loadUrl(url)
@@ -314,14 +236,22 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     /** Call when you're truly done (e.g. ViewModel.onCleared) to free native resources. */
     suspend fun shutdown() = withContext(Dispatchers.Main) {
         repeat(poolSize) {
-            val pooledInstance = pool.tryReceive().getOrNull() ?: return@repeat
-            destroyWebViewSafely(pooledInstance.webView)
-
-
+            val pooledWebView = pool.tryReceive().getOrNull() ?: return@repeat
+            destroyWebViewSafely(pooledWebView)
         }
         pool.close()
 
         Log.d("MyTag", "Pool was closed !")
+    }
+
+    suspend fun recreateWebView(view: WebView) = initMutex.withLock {
+        if (!initialized) return@withLock
+        destroyWebViewSafely(view)
+
+        val newView = createWebView()
+        pool.trySend(newView)
+
+        Log.d("MyTag", "New view was created "+ poolSize.toString())
     }
 
     suspend fun closeWholePool(drainTimeoutMs: Long = 5_000) = initMutex.withLock {
@@ -333,8 +263,8 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         // by suspending on receive() until each is returned, bounded by the timeout
         withTimeoutOrNull(drainTimeoutMs) {
             repeat(poolSize) {
-                val pooled = pool.receive()
-                destroyWebViewSafely(pooled.webView)
+                val pooledView = pool.receive()
+                destroyWebViewSafely(pooledView)
                 destroyedCount++
             }
         }
@@ -379,7 +309,6 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         }
     }
 
-
     private fun unescapeJsString(raw: String): String = try {
         JSONTokener(raw).nextValue() as String
     } catch (e: Exception) {
@@ -394,13 +323,12 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     ): List<JobCard> = coroutineScope {
         val parsedVacancies = mutableListOf<JobCard>()
 
-
         (0..jobCardsQueries.size - 1).map { pageIndex ->
             async {
                 val currentPageQueryLink = jobCardsQueries[pageIndex]
 
                 if (!currentPageQueryLink.isBlank()) {
-                    val html = pool.renderPage2(currentPageQueryLink, rabotaUaFullyRenderedVacancyPageLenght)
+                    val html = pool.renderPage(currentPageQueryLink, rabotaUaFullyRenderedVacancyPageLenght)
                     val currentVacancyCard: JobCard? = parseVacancyCard(html)
 
                     currentVacancyCard?.let { parsedVacancies.add(currentVacancyCard) }
@@ -422,7 +350,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
             var count: Int = 0
 
             Log.d("MyTag", searchingUrl)
-            val html = pool.renderPage2(searchingUrl, rabotaUaFullyRenderedGeneralPageLenght)
+            val html = pool.renderPage(searchingUrl, rabotaUaFullyRenderedGeneralPageLenght)
 
             try {
                 count = getPagesCount(html)
@@ -451,7 +379,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
 
                     suspend fun renderHtmlPage(index: Int) {
                         val url = buildPageUrl(searchUrl, index)
-                        renderedRawHtml = pool.renderPage2(url, rabotaUaFullyRenderedGeneralPageLenght)
+                        renderedRawHtml = pool.renderPage(url, rabotaUaFullyRenderedGeneralPageLenght)
                     }
 
                     renderHtmlPage(currentPageIndex)
@@ -520,7 +448,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         vacanciesCount = coroutineScope {
             var count: Int = 0
 
-            val html = webViewPool.renderPage2(userQuery, rabotaUaFullyRenderedGeneralPageLenght)
+            val html = webViewPool.renderPage(userQuery, rabotaUaFullyRenderedGeneralPageLenght)
 
             try {
                 count = getVacanciesCount(html)
@@ -552,7 +480,6 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     }
 
 /////////////////Supporting functions /////////////////////////
-
     private fun buildPageUrl(searchUrl: String, pageNumber: Int): String {
         if (pageNumber <= 1) return searchUrl
         val separator = if (searchUrl.contains("?")) "&" else "?"
@@ -661,6 +588,4 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         }
     }
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
-class PooledWebView(var webView: WebView, var initialLoadCount: Int = 0)
 

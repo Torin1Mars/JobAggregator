@@ -62,8 +62,6 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
         }
     }
 
-
-
     @RequiresApi(Build.VERSION_CODES.O)
     fun runParsing(searchingUrl: String) {
         viewModelScope.launch {
@@ -121,5 +119,5 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
         webViewPool?.let { viewModelScope.launch { it.closeWholePool();
             webViewPool = null }  }
     }
-}
 
+}

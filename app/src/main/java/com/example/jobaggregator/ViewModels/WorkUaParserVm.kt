@@ -98,6 +98,4 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     override fun onCleared(){
 
     }
-
 }
-

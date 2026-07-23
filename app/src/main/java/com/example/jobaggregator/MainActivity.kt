@@ -72,7 +72,6 @@ fun CommonScreen(currentContext: Context) {
         Button(colors = if (parsersLoadingStatus){
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
-
             onClick = {mainViewModel.runCheckVacanciesCount(workUaQuery = convertedQuery[0], rabotaUaQuery = convertedQuery[1]) } )
         {
             Text(if (parsersLoadingStatus) "Parsers are working..." else "Run new parsing")
