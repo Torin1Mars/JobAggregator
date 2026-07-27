@@ -3,7 +3,6 @@ package com.example.jobaggregator.Parsers
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import android.view.KeyEvent
 import android.view.ViewGroup
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -31,7 +30,6 @@ import org.json.JSONTokener
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.collections.forEach
-import kotlin.coroutines.resumeWithException
 
 class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     private val poolSize: Int = allowedActiveWebViewsCount
@@ -68,9 +66,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
 
-
-        //Todo Its cause Error :
-        settings.cacheMode = WebSettings.LOAD_CACHE_ONLY
+        settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
 
         settings.userAgentString =
             "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 " +
@@ -78,7 +74,8 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
     }
 
     suspend fun renderPage(
-        url: String, fullyRenderedPageLength : Int): String {
+        url: String, fullyRenderedPageLength: Int
+    ): String {
         if (!initialized) warmUp()
 
         var webView = pool.receive() // suspends here if all views are busy
@@ -93,7 +90,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
             }
         }
 
-        suspend fun renewView(){
+        suspend fun renewView() {
             withContext(Dispatchers.Main) {
                 //Clearing current View after successful
                 webView.stopLoading()
@@ -111,17 +108,16 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
 
             while (renderedPage.isEmpty()) {
 
-                //TODO Its okay , need to continue next here :
-                //I need recreate view and render page again with this new view next
+                if (renderAttempts == 0) {
+                    //Creating a new Web view
 
-                if (renderAttempts ==0){
-
-                    recreateWebView(webView)
+                    webView = recreateWebView(webView)
                     renderAttempts = rabotaUaWebViewRenderAttempts
                 }
 
-
                 renderedPage = try {
+                    renderAttempts -= 1
+
                     withTimeout(rabotaUaParserRenderDelay) {
                         fetchHtml(webView, url, fullyRenderedPageLength)
                     }
@@ -133,7 +129,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
                     ""
                 }
                 if (renderedPage.isNotEmpty()) break // success, stop retrying
-                else resetForRetry(); renderAttempts -=1
+                else resetForRetry(); renderAttempts -= 1
             }
 
             renderedPage
@@ -180,7 +176,7 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
                         webView.stopLoading()
                         webView.clearCache(true)
                         webView.webViewClient = object : WebViewClient() {}
-                        continuation.resume(emptyResult){}
+                        continuation.resume(emptyResult) {}
                     }
                 }
 
@@ -244,14 +240,18 @@ class WebViewPool(context: Context, allowedActiveWebViewsCount: Int) {
         Log.d("MyTag", "Pool was closed !")
     }
 
-    suspend fun recreateWebView(view: WebView) = initMutex.withLock {
-        if (!initialized) return@withLock
+    suspend fun recreateWebView(view: WebView): WebView {
+        return initMutex.withLock {
         destroyWebViewSafely(view)
 
         val newView = createWebView()
         pool.trySend(newView)
 
-        Log.d("MyTag", "New view was created "+ poolSize.toString())
+        Log.d("MyTag", "New view was created " + poolSize.toString())
+
+        //Returning new created web view
+        newView
+        }
     }
 
     suspend fun closeWholePool(drainTimeoutMs: Long = 5_000) = initMutex.withLock {

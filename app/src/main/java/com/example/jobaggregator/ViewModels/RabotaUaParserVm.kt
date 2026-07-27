@@ -77,6 +77,9 @@ class RabotaUaParserVm @Inject constructor(@ApplicationContext appContext: Conte
     @RequiresApi(Build.VERSION_CODES.O)
     private suspend fun _runNewParsing(userQuery: String){
 
+        //TODO Its nesesarry to add here some try catch block which will check is any error in web view aceded
+        //and simply will stop parsing
+
         //Checking how many pages with vacancies in query respond
         webViewPool = WebViewPool(context, rabotaUaMaxRuningWebViewsInOnes)
         _respondPagesCount.value = checkHowManyPagesInRespond(userQuery, webViewPool!!)
