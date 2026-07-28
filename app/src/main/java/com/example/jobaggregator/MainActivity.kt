@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
+import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.JobAggregatorScreen
 
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -39,9 +40,18 @@ class MainActivity:ComponentActivity() {
         enableEdgeToEdge()
         setContent {
 
-            //WorkUaParserScreen(currentContext = applicationContext)
-            //RabotaUaParserScreen(currentContext = applicationContext)
-            CommonScreen(currentContext = applicationContext )
+            JobAggregatorScreen(
+                vacancyQuery = "Ok",
+                onVacancyQueryChange = {},
+                cityQuery = "Ok",
+                onCityQueryChange = {},
+                onSearch = {},
+                isLoading = false,
+                errorMessage = null,
+                vacancies = null,
+                filterQuery = "",
+                onFilterQueryChange = {}
+            )
         }
     }
 }
@@ -102,14 +112,4 @@ fun CommonScreen(currentContext: Context) {
 
 }
 
-@Composable
-fun MainScreenUserInputBlock(modifier: Modifier) {
-
-}
-
-@Composable
-fun MainScreenFunctionButtonsBlock(modifier: Modifier)  {
-
-
-}
 

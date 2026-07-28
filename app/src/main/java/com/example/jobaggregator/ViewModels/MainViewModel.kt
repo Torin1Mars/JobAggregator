@@ -74,25 +74,25 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
             workUaParserVm.checkVacanciesCountByQuery(currentWorkUaQuery)
         }
 
+        /*
         if (rabotaUaQuery.isNotBlank()){
-
             currentRabotaUaQuery = rabotaUaQuery
             rabotaUaParserVm.checkVacanciesCount(currentRabotaUaQuery)
-        }
+        }*/
     }
 
     public fun runVacanciesParsing(){
-        /*if (currentWorkUaQuery.isNotBlank()){
+        if (currentWorkUaQuery.isNotBlank()){
             workUaParserVm.runParsing(currentWorkUaQuery, {addParsedVacanciesToDb()})
-        }*/
+        }
 
+        /*
         if (currentRabotaUaQuery.isNotBlank()){
             rabotaUaParserVm.runParsing(currentRabotaUaQuery)
-        }
+        }*/
     }
 
     private fun addParsedVacanciesToDb(){
-
         CoroutineScope(Dispatchers.IO).launch {
             val formatedList = formatJobCardsList(workUaVacanciesCards.value.toMutableList())
 
