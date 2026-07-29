@@ -39,19 +39,7 @@ class MainActivity:ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-
-            JobAggregatorScreen(
-                vacancyQuery = "Ok",
-                onVacancyQueryChange = {},
-                cityQuery = "Ok",
-                onCityQueryChange = {},
-                onSearch = {},
-                isLoading = false,
-                errorMessage = null,
-                vacancies = null,
-                filterQuery = "",
-                onFilterQueryChange = {}
-            )
+            JobAggregatorScreen()
         }
     }
 }

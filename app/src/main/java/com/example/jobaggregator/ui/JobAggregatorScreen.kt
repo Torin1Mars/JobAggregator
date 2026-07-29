@@ -1,5 +1,7 @@
 package com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,12 +27,19 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.jobaggregator.ViewModels.MainViewModel
 
 // --- Palette (inline so this file has no other dependencies) ---------------
 private val BackgroundBlack = Color(0xFF121212)
@@ -61,31 +70,18 @@ data class Vacancy(
  * holder you already have. `vacancies == null` means "no search run yet",
  * an empty list means "search ran, zero results".
  */
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun JobAggregatorScreen(
-    vacancyQuery: String,
-    onVacancyQueryChange: (String) -> Unit,
-    cityQuery: String,
-    onCityQueryChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    isLoading: Boolean,
-    errorMessage: String? = null,
-    vacancies: List<Vacancy>? = null,
-    filterQuery: String = "",
-    onFilterQueryChange: (String) -> Unit = {}
-) {
-    val visibleVacancies = remember(vacancies, filterQuery) {
-        if (vacancies == null) {
-            null
-        } else if (filterQuery.isBlank()) {
-            vacancies
-        } else {
-            vacancies.filter {
-                it.title.contains(filterQuery, ignoreCase = true) ||
-                    it.company.contains(filterQuery, ignoreCase = true)
-            }
-        }
-    }
+fun JobAggregatorScreen() {
+    val mainVM : MainViewModel = viewModel()
+
+    val isLoading  by remember { mutableStateOf<Boolean>(false) }
+    val vacancyQuery by remember { mutableStateOf<String>("") }
+    val cityQuery by remember { mutableStateOf<String>("") }
+
+    val visibleVacancies = remember { mutableStateListOf<Vacancy>() }
+
+    val errorMessage by remember { mutableStateOf<String?>("") }
 
     Scaffold(containerColor = BackgroundBlack) { padding ->
         Column(
@@ -98,7 +94,7 @@ fun JobAggregatorScreen(
 
             Text(
                 text = "Job Search",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = TextPrimary,
                 fontWeight = FontWeight.SemiBold
             )
@@ -106,8 +102,7 @@ fun JobAggregatorScreen(
             Spacer(Modifier.height(24.dp))
 
             MinimalTextField(
-                value = vacancyQuery,
-                onValueChange = onVacancyQueryChange,
+                initialValue = vacancyQuery,
                 label = "Vacancy",
                 placeholder = "e.g. Android Developer",
                 enabled = !isLoading
@@ -116,8 +111,7 @@ fun JobAggregatorScreen(
             Spacer(Modifier.height(12.dp))
 
             MinimalTextField(
-                value = cityQuery,
-                onValueChange = onCityQueryChange,
+                initialValue = cityQuery,
                 label = "City",
                 placeholder = "e.g. Kyiv",
                 enabled = !isLoading
@@ -126,7 +120,7 @@ fun JobAggregatorScreen(
             Spacer(Modifier.height(20.dp))
 
             Button(
-                onClick = onSearch,
+                onClick = {mainVM.runVacanciesParsing()},
                 enabled = !isLoading && vacancyQuery.isNotBlank() && cityQuery.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -155,7 +149,7 @@ fun JobAggregatorScreen(
             when {
                 errorMessage != null -> {
                     Text(
-                        text = errorMessage,
+                        text = errorMessage!!,
                         style = MaterialTheme.typography.bodyMedium,
                         color = ErrorRed
                     )
@@ -180,8 +174,7 @@ fun JobAggregatorScreen(
                 else -> {
                     // Additional field, shown only once parsing has completed.
                     MinimalTextField(
-                        value = filterQuery,
-                        onValueChange = onFilterQueryChange,
+                        initialValue = "",
                         label = "Filter results",
                         placeholder = "Filter by title or company"
                     )
@@ -189,7 +182,7 @@ fun JobAggregatorScreen(
                     Spacer(Modifier.height(14.dp))
 
                     Text(
-                        text = "${visibleVacancies.size} of ${vacancies?.size ?: 0} vacancies",
+                        text = "${visibleVacancies.size} of 0 vacancies",
                         style = MaterialTheme.typography.labelMedium,
                         color = TextSecondary
                     )
@@ -218,15 +211,14 @@ fun JobAggregatorScreen(
 
 @Composable
 private fun MinimalTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    initialValue: String,
     label: String,
     placeholder: String,
     enabled: Boolean = true
 ) {
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = initialValue,
+        onValueChange ={},
         modifier = Modifier.fillMaxWidth(),
         enabled = enabled,
         singleLine = true,
