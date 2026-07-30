@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -76,8 +77,8 @@ fun JobAggregatorScreen() {
     val mainVM : MainViewModel = viewModel()
 
     val isLoading  by remember { mutableStateOf<Boolean>(false) }
-    val vacancyQuery by remember { mutableStateOf<String>("") }
-    val cityQuery by remember { mutableStateOf<String>("") }
+    var vacancyQuery by remember { mutableStateOf<String>("") }
+    var cityQuery by remember { mutableStateOf<String>("") }
 
     val visibleVacancies = remember { mutableStateListOf<Vacancy>() }
 
@@ -103,6 +104,7 @@ fun JobAggregatorScreen() {
 
             MinimalTextField(
                 initialValue = vacancyQuery,
+                onValueChange = {newText ->vacancyQuery = newText },
                 label = "Vacancy",
                 placeholder = "e.g. Android Developer",
                 enabled = !isLoading
@@ -112,6 +114,7 @@ fun JobAggregatorScreen() {
 
             MinimalTextField(
                 initialValue = cityQuery,
+                onValueChange = {newText ->cityQuery = newText },
                 label = "City",
                 placeholder = "e.g. Kyiv",
                 enabled = !isLoading
@@ -174,7 +177,8 @@ fun JobAggregatorScreen() {
                 else -> {
                     // Additional field, shown only once parsing has completed.
                     MinimalTextField(
-                        initialValue = "",
+                        initialValue = vacancyQuery,
+                        onValueChange = {},
                         label = "Filter results",
                         placeholder = "Filter by title or company"
                     )
@@ -212,13 +216,14 @@ fun JobAggregatorScreen() {
 @Composable
 private fun MinimalTextField(
     initialValue: String,
+    onValueChange : (String)-> Unit,
     label: String,
     placeholder: String,
     enabled: Boolean = true
 ) {
     OutlinedTextField(
         value = initialValue,
-        onValueChange ={},
+        onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
         enabled = enabled,
         singleLine = true,
