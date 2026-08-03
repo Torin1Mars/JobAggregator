@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.util.TableInfo
 import com.example.jobaggregator.ViewModels.MainViewModel
 
 // --- Palette (inline so this file has no other dependencies) ---------------
@@ -122,30 +123,54 @@ fun JobAggregatorScreen() {
 
             Spacer(Modifier.height(20.dp))
 
-            Button(
-                onClick = {mainVM.runVacanciesParsing()},
-                enabled = !isLoading && vacancyQuery.isNotBlank() && cityQuery.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentGreen,
-                    contentColor = BackgroundBlack,
-                    disabledContainerColor = SurfaceDarkElevated,
-                    disabledContentColor = TextSecondary
-                )
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = BackgroundBlack,
-                        strokeWidth = 2.dp
+            Column (modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(15.dp)){
+
+                Button(
+                    onClick = {mainVM.runVacanciesParsing()},
+                    enabled = !isLoading && vacancyQuery.isNotBlank() && cityQuery.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentGreen,
+                        contentColor = BackgroundBlack,
+                        disabledContainerColor = SurfaceDarkElevated,
+                        disabledContentColor = TextSecondary
                     )
-                } else {
-                    Text("Search", fontWeight = FontWeight.Medium)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = BackgroundBlack,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Search", fontWeight = FontWeight.Medium)
+                    }
                 }
+
+                Button(
+                    onClick = {vacancyQuery = ""; cityQuery = ""},
+                    enabled = vacancyQuery.isNotBlank() || cityQuery.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentGreen,
+                        contentColor = BackgroundBlack,
+                        disabledContainerColor = SurfaceDarkElevated,
+                        disabledContentColor = TextSecondary
+                    )
+                ) {
+                    Text("Clear", fontWeight = FontWeight.Medium)
+                }
+
             }
+
+
 
             Spacer(Modifier.height(24.dp))
 
