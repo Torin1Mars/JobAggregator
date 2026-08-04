@@ -1,6 +1,5 @@
 package com.example.jobaggregator.Parsers
 
-import android.content.Context
 import android.icu.text.Transliterator
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -8,10 +7,7 @@ import com.example.jobaggregator.supportingData.maxCityInputLenght
 import com.example.jobaggregator.supportingData.maxJobTitleInputLenght
 import com.example.jobaggregator.supportingData.rabotaUaUrl
 
-class UserQueryManager(appContext: Context) {
-
-    private val context = appContext
-
+class UserQueryManager() {
     @RequiresApi(Build.VERSION_CODES.Q)
     fun convertUserQueryInput(queryCity: String = "", queryJobTitle: String = ""): List<String>{
         val workUaQuery = convertUserInputForWorkUa(city = queryCity, jobTitle = queryJobTitle)

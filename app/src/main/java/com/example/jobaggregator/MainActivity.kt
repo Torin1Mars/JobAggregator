@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
-import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.JobAggregatorScreen
+import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.MainScreen
+import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.checkVacancies
 
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -39,7 +40,7 @@ class MainActivity:ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            JobAggregatorScreen()
+            MainScreen(this)
         }
     }
 }
@@ -58,8 +59,6 @@ fun CommonScreen(currentContext: Context) {
     val rabotaUaFoundedVacanciesCount by mainViewModel.rabotaUaVacanciesCount.collectAsState()
     val rabotaUaErrors by mainViewModel.rabotaUaErrorMessage.collectAsState()
 
-    val manager = UserQueryManager(currentContext)
-    val convertedQuery = manager.convertUserQueryInput("сміла")
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -70,7 +69,7 @@ fun CommonScreen(currentContext: Context) {
         Button(colors = if (parsersLoadingStatus){
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
-            onClick = {mainViewModel.runCheckVacanciesCount(workUaQuery = convertedQuery[0], rabotaUaQuery = convertedQuery[1]) } )
+            onClick = { mainViewModel.runCheckVacanciesCount() })
         {
             Text(if (parsersLoadingStatus) "Parsers are working..." else "Run new parsing")
         }

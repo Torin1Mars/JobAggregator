@@ -1,5 +1,6 @@
 package com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator
 
+import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
@@ -27,7 +28,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,12 +37,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.util.TableInfo
+import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.combine
+import java.lang.reflect.Constructor
+import javax.inject.Inject
 
 // --- Palette (inline so this file has no other dependencies) ---------------
 private val BackgroundBlack = Color(0xFF121212)
@@ -72,18 +77,28 @@ data class Vacancy(
  * holder you already have. `vacancies == null` means "no search run yet",
  * an empty list means "search ran, zero results".
  */
-@RequiresApi(Build.VERSION_CODES.O)
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun JobAggregatorScreen() {
-    val mainVM : MainViewModel = viewModel()
+fun MainScreen (context : Context) {
 
-    val isLoading  by remember { mutableStateOf<Boolean>(false) }
     var vacancyQuery by remember { mutableStateOf<String>("") }
     var cityQuery by remember { mutableStateOf<String>("") }
 
     val visibleVacancies = remember { mutableStateListOf<Vacancy>() }
-
     val errorMessage by remember { mutableStateOf<String?>("") }
+
+
+    ////
+    val mainVM : MainViewModel = viewModel()
+
+    val parsersLoadingStatus by mainVM.parsersBusyStatus.collectAsState()
+    val vacanciesCountHasBeenChecked by mainVM.vacanciesCountHasBeenChecked.collectAsState()
+
+    val workUaFoundedVacanciesCount by mainVM.workUaVacanciesCount.collectAsState()
+    val workUaErrors by mainVM.workUaErrorMessage.collectAsState()
+
+    val rabotaUaFoundedVacanciesCount by mainVM.rabotaUaVacanciesCount.collectAsState()
+    val rabotaUaErrors by mainVM.rabotaUaErrorMessage.collectAsState()
 
     Scaffold(containerColor = BackgroundBlack) { padding ->
         Column(
@@ -108,7 +123,7 @@ fun JobAggregatorScreen() {
                 onValueChange = {newText ->vacancyQuery = newText },
                 label = "Vacancy",
                 placeholder = "e.g. Android Developer",
-                enabled = !isLoading
+                enabled = !parsersLoadingStatus
             )
 
             Spacer(Modifier.height(12.dp))
@@ -118,7 +133,7 @@ fun JobAggregatorScreen() {
                 onValueChange = {newText ->cityQuery = newText },
                 label = "City",
                 placeholder = "e.g. Kyiv",
-                enabled = !isLoading
+                enabled = !parsersLoadingStatus
             )
 
             Spacer(Modifier.height(20.dp))
@@ -127,8 +142,8 @@ fun JobAggregatorScreen() {
                 verticalArrangement = Arrangement.spacedBy(15.dp)){
 
                 Button(
-                    onClick = {mainVM.runVacanciesParsing()},
-                    enabled = !isLoading && vacancyQuery.isNotBlank() && cityQuery.isNotBlank(),
+                    onClick = {checkVacancies("", "", mainVM)},
+                    enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() && cityQuery.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
@@ -140,7 +155,7 @@ fun JobAggregatorScreen() {
                         disabledContentColor = TextSecondary
                     )
                 ) {
-                    if (isLoading) {
+                    if (parsersLoadingStatus) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             color = BackgroundBlack,
@@ -184,7 +199,7 @@ fun JobAggregatorScreen() {
                 }
 
                 visibleVacancies == null -> {
-                    if (!isLoading) {
+                    if (parsersLoadingStatus) {
                         Text(
                             text = "Enter a vacancy and a city to get started.",
                             style = MaterialTheme.typography.bodyMedium,
@@ -312,4 +327,18 @@ private fun VacancyCard(vacancy: Vacancy) {
             }
         }
     }
+}
+
+@RequiresApi(Build.VERSION_CODES.Q)
+fun checkVacancies(vacancyCityQuery: String,vacancyTitleQuery: String, mainVm: MainViewModel){
+
+    val manager = UserQueryManager()
+    val convertedQuery = manager.convertUserQueryInput("сміла")
+
+    mainVm.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun startNewParsing(context: Context, initialUserQuery: String = "", mainVm: MainViewModel){
+    mainVm.runVacanciesParsing()
 }
