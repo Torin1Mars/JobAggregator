@@ -25,10 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.MainScreen
-import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.checkVacancies
+import com.example.jobaggregator.ui.theme.JobAggregatorTheme
 
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -40,7 +39,11 @@ class MainActivity:ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MainScreen(this)
+
+            JobAggregatorTheme(
+                darkTheme = true,
+                content = {MainScreen(this)}
+            )
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator
 
+import android.R
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -7,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -36,27 +39,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.combine
-import java.lang.reflect.Constructor
-import javax.inject.Inject
-
-// --- Palette (inline so this file has no other dependencies) ---------------
-private val BackgroundBlack = Color(0xFF121212)
-private val SurfaceDark = Color(0xFF1C1C1E)
-private val SurfaceDarkElevated = Color(0xFF232325)
-private val BorderGray = Color(0xFF3A3A3C)
-private val TextPrimary = Color(0xFFEDEDED)
-private val TextSecondary = Color(0xFF9A9A9E)
-private val AccentGreen = Color(0xFF2ECC71)
-private val ErrorRed = Color(0xFFE05B4E)
+import com.example.jobaggregator.ui.theme.AccentGreen
+import com.example.jobaggregator.ui.theme.BackgroundBlack
+import com.example.jobaggregator.ui.theme.BorderGray
+import com.example.jobaggregator.ui.theme.ErrorRed
+import com.example.jobaggregator.ui.theme.SurfaceDark
+import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
+import com.example.jobaggregator.ui.theme.TextPrimary
+import com.example.jobaggregator.ui.theme.TextSecondary
 
 // --- Model -------------------------------------------------------------
 data class Vacancy(
@@ -87,6 +83,7 @@ fun MainScreen (context : Context) {
     val visibleVacancies = remember { mutableStateListOf<Vacancy>() }
     val errorMessage by remember { mutableStateOf<String?>("") }
 
+    //TODO continuing to set up here:
 
     ////
     val mainVM : MainViewModel = viewModel()
@@ -111,7 +108,7 @@ fun MainScreen (context : Context) {
 
             Text(
                 text = "Job Search",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = TextPrimary,
                 fontWeight = FontWeight.SemiBold
             )
@@ -123,7 +120,8 @@ fun MainScreen (context : Context) {
                 onValueChange = {newText ->vacancyQuery = newText },
                 label = "Vacancy",
                 placeholder = "e.g. Android Developer",
-                enabled = !parsersLoadingStatus
+                enabled = !parsersLoadingStatus,
+
             )
 
             Spacer(Modifier.height(12.dp))
@@ -143,7 +141,7 @@ fun MainScreen (context : Context) {
 
                 Button(
                     onClick = {checkVacancies("", "", mainVM)},
-                    enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() && cityQuery.isNotBlank(),
+                    enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() || !parsersLoadingStatus && cityQuery.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
@@ -162,7 +160,9 @@ fun MainScreen (context : Context) {
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Search", fontWeight = FontWeight.Medium)
+                        Text("Check vacancies",
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyLarge)
                     }
                 }
 
@@ -180,12 +180,41 @@ fun MainScreen (context : Context) {
                         disabledContentColor = TextSecondary
                     )
                 ) {
-                    Text("Clear", fontWeight = FontWeight.Medium)
+                    Text("Clear",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyLarge)
                 }
 
+                if (vacanciesCountHasBeenChecked){
+                    Box(modifier = Modifier.padding(vertical = 20.dp)){
+
+                        HorizontalDivider(
+                            thickness = 3.dp,
+                            color = AccentGreen
+                        )
+
+                        Button(
+                            onClick = {vacancyQuery = ""; cityQuery = ""},
+                            modifier = Modifier
+                                .padding(top = 10.dp)
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AccentGreen,
+                                contentColor = BackgroundBlack,
+                                disabledContainerColor = SurfaceDarkElevated,
+                                disabledContentColor = TextSecondary
+                            )
+                        ) {
+                            Text("Find vacancies",
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodyLarge)
+                        }
+
+                    }
+                }
             }
-
-
 
             Spacer(Modifier.height(24.dp))
 
