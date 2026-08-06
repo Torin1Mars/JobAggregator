@@ -37,8 +37,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,8 +84,6 @@ fun MainScreen (context : Context) {
 
     val visibleVacancies = remember { mutableStateListOf<Vacancy>() }
     val errorMessage by remember { mutableStateOf<String?>("") }
-
-    //TODO continuing to set up here:
 
     ////
     val mainVM : MainViewModel = viewModel()
@@ -156,7 +156,7 @@ fun MainScreen (context : Context) {
                     if (parsersLoadingStatus) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            color = BackgroundBlack,
+                            color = Color.White,
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -185,8 +185,17 @@ fun MainScreen (context : Context) {
                         style = MaterialTheme.typography.bodyLarge)
                 }
 
-                if (vacanciesCountHasBeenChecked){
-                    Box(modifier = Modifier.padding(vertical = 20.dp)){
+                if (vacanciesCountHasBeenChecked) {
+                    Column(modifier = Modifier.padding(vertical = 15.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+
+                        workUaFoundedVacanciesCount?.let { it ->
+                            Text(
+                                "$it vacancies was found !",
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodyMedium.copy(color = Color.White, fontSize = 20.sp)
+                            )
+                        }
 
                         HorizontalDivider(
                             thickness = 3.dp,
@@ -194,7 +203,7 @@ fun MainScreen (context : Context) {
                         )
 
                         Button(
-                            onClick = {vacancyQuery = ""; cityQuery = ""},
+                            onClick = { mainVM.runVacanciesParsing()},
                             modifier = Modifier
                                 .padding(top = 10.dp)
                                 .fillMaxWidth()
@@ -207,12 +216,16 @@ fun MainScreen (context : Context) {
                                 disabledContentColor = TextSecondary
                             )
                         ) {
-                            Text("Find vacancies",
+                            Text(
+                                "Get vacancies",
                                 fontWeight = FontWeight.Medium,
-                                style = MaterialTheme.typography.bodyLarge)
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
 
+
                     }
+                }
                 }
             }
 
@@ -279,8 +292,8 @@ fun MainScreen (context : Context) {
                 }
             }
         }
-    }
 }
+
 
 @Composable
 private fun MinimalTextField(
