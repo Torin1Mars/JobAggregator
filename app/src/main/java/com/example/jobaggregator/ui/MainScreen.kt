@@ -1,6 +1,5 @@
 package com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator
 
-import android.R
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -8,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
+import com.example.jobaggregator.data.DatabaseJobCard
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
 import com.example.jobaggregator.ui.theme.BorderGray
@@ -56,37 +55,28 @@ import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
 import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
 
-// --- Model -------------------------------------------------------------
-data class Vacancy(
-    val id: String,
-    val title: String,
-    val company: String,
-    val city: String,
-    val salary: String? = null,
-    val url: String
-)
 
-/**
- * Stateless job search screen — main inputs (Vacancy / City) up top, and once
- * [vacancies] is non-null (i.e. parsing has completed) a second "Filter
- * results" field appears above the list.
- *
- * Everything is hoisted: wire the params up to whatever ViewModel / state
- * holder you already have. `vacancies == null` means "no search run yet",
- * an empty list means "search ran, zero results".
- */
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun MainScreen (context : Context) {
 
+    Scaffold(containerColor = BackgroundBlack,
+        topBar = {},
+        content = {MainScreenMainContent(context)},
+        bottomBar = {})
+
+}
+
+@RequiresApi(Build.VERSION_CODES.Q)
+@Composable
+fun MainScreenMainContent(context: Context){
     var vacancyQuery by remember { mutableStateOf<String>("") }
     var cityQuery by remember { mutableStateOf<String>("") }
 
-    val visibleVacancies = remember { mutableStateListOf<Vacancy>() }
     val errorMessage by remember { mutableStateOf<String?>("") }
 
     ////
-    val mainVM : MainViewModel = viewModel()
+    val mainVM: MainViewModel = viewModel()
 
     val parsersLoadingStatus by mainVM.parsersBusyStatus.collectAsState()
     val vacanciesCountHasBeenChecked by mainVM.vacanciesCountHasBeenChecked.collectAsState()
@@ -97,201 +87,149 @@ fun MainScreen (context : Context) {
     val rabotaUaFoundedVacanciesCount by mainVM.rabotaUaVacanciesCount.collectAsState()
     val rabotaUaErrors by mainVM.rabotaUaErrorMessage.collectAsState()
 
-    Scaffold(containerColor = BackgroundBlack) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp)
-        ) {
-            Spacer(Modifier.height(28.dp))
+    fun resetUserInputs() {
+        vacancyQuery = ""
+        cityQuery = ""
+    }
 
-            Text(
-                text = "Job Search",
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextPrimary,
-                fontWeight = FontWeight.SemiBold
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp)
+    ) {
+        Spacer(Modifier.height(28.dp))
+
+        Text(
+            text = "Job Search",
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        MinimalTextField(
+            initialValue = vacancyQuery,
+            onValueChange = {newText ->vacancyQuery = newText },
+            label = "Vacancy",
+            placeholder = "e.g. Android Developer",
+            enabled = !parsersLoadingStatus
             )
 
-            Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
 
-            MinimalTextField(
-                initialValue = vacancyQuery,
-                onValueChange = {newText ->vacancyQuery = newText },
-                label = "Vacancy",
-                placeholder = "e.g. Android Developer",
-                enabled = !parsersLoadingStatus,
+        MinimalTextField(
+            initialValue = cityQuery,
+            onValueChange = {newText ->cityQuery = newText },
+            label = "City",
+            placeholder = "e.g. Kyiv",
+            enabled = !parsersLoadingStatus
+        )
 
-            )
+        Spacer(Modifier.height(20.dp))
 
-            Spacer(Modifier.height(12.dp))
+        Column (modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(15.dp)){
 
-            MinimalTextField(
-                initialValue = cityQuery,
-                onValueChange = {newText ->cityQuery = newText },
-                label = "City",
-                placeholder = "e.g. Kyiv",
-                enabled = !parsersLoadingStatus
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            Column (modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(15.dp)){
-
-                Button(
-                    onClick = {checkVacancies("", "", mainVM)},
-                    enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() || !parsersLoadingStatus && cityQuery.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentGreen,
-                        contentColor = BackgroundBlack,
-                        disabledContainerColor = SurfaceDarkElevated,
-                        disabledContentColor = TextSecondary
+            Button(
+                onClick = {checkVacancies("", "", mainVM)},
+                enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() || !parsersLoadingStatus && cityQuery.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentGreen,
+                    contentColor = BackgroundBlack,
+                    disabledContainerColor = SurfaceDarkElevated,
+                    disabledContentColor = TextSecondary
+                )
+            ) {
+                if (parsersLoadingStatus) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
                     )
-                ) {
-                    if (parsersLoadingStatus) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Check vacancies",
-                            fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-
-                Button(
-                    onClick = {vacancyQuery = ""; cityQuery = ""},
-                    enabled = vacancyQuery.isNotBlank() || cityQuery.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentGreen,
-                        contentColor = BackgroundBlack,
-                        disabledContainerColor = SurfaceDarkElevated,
-                        disabledContentColor = TextSecondary
-                    )
-                ) {
-                    Text("Clear",
+                } else {
+                    Text("Check vacancies",
                         fontWeight = FontWeight.Medium,
                         style = MaterialTheme.typography.bodyLarge)
                 }
-
-                if (vacanciesCountHasBeenChecked) {
-                    Column(modifier = Modifier.padding(vertical = 15.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally) {
-
-                        workUaFoundedVacanciesCount?.let { it ->
-                            Text(
-                                "$it vacancies was found !",
-                                fontWeight = FontWeight.Medium,
-                                style = MaterialTheme.typography.bodyMedium.copy(color = Color.White, fontSize = 20.sp)
-                            )
-                        }
-
-                        HorizontalDivider(
-                            thickness = 3.dp,
-                            color = AccentGreen
-                        )
-
-                        Button(
-                            onClick = { mainVM.runVacanciesParsing()},
-                            modifier = Modifier
-                                .padding(top = 10.dp)
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AccentGreen,
-                                contentColor = BackgroundBlack,
-                                disabledContainerColor = SurfaceDarkElevated,
-                                disabledContentColor = TextSecondary
-                            )
-                        ) {
-                            Text(
-                                "Get vacancies",
-                                fontWeight = FontWeight.Medium,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-
-
-                    }
-                }
-                }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = {resetUserInputs()},
+                enabled = vacancyQuery.isNotBlank() || cityQuery.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentGreen,
+                    contentColor = BackgroundBlack,
+                    disabledContainerColor = SurfaceDarkElevated,
+                    disabledContentColor = TextSecondary
+                )
+            ) {
+                Text("Clear",
+                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyLarge)
+            }
 
-            when {
-                errorMessage != null -> {
-                    Text(
-                        text = errorMessage!!,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ErrorRed
-                    )
-                }
+            if (vacanciesCountHasBeenChecked) {
+                Column(modifier = Modifier.padding(vertical = 15.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
 
-                visibleVacancies == null -> {
-                    if (parsersLoadingStatus) {
+                    workUaFoundedVacanciesCount?.let { it ->
                         Text(
-                            text = "Enter a vacancy and a city to get started.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                    } else {
-                        Text(
-                            text = "Parsing vacancies from robota.ua…",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            "$it vacancies was found !",
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyMedium.copy(color = Color.White, fontSize = 20.sp)
                         )
                     }
-                }
 
-                else -> {
-                    // Additional field, shown only once parsing has completed.
-                    MinimalTextField(
-                        initialValue = vacancyQuery,
-                        onValueChange = {},
-                        label = "Filter results",
-                        placeholder = "Filter by title or company"
+                    HorizontalDivider(
+                        thickness = 3.dp,
+                        color = AccentGreen
                     )
 
-                    Spacer(Modifier.height(14.dp))
-
-                    Text(
-                        text = "${visibleVacancies.size} of 0 vacancies",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    if (visibleVacancies.isEmpty()) {
-                        Text(
-                            text = "No matches for this filter.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                    Button(
+                        onClick = { mainVM.runVacanciesParsing(context)},
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentGreen,
+                            contentColor = BackgroundBlack,
+                            disabledContainerColor = SurfaceDarkElevated,
+                            disabledContentColor = TextSecondary
                         )
-                    } else {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(visibleVacancies, key = { it.id }) { vacancy ->
-                                VacancyCard(vacancy)
-                            }
-                            item { Spacer(Modifier.height(24.dp)) }
-                        }
+                    ) {
+                        Text(
+                            "Get vacancies",
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
             }
         }
+    }
+
+    Spacer(Modifier.height(15.dp))
+
+    when {
+        errorMessage != null -> {
+            Text(
+                text = errorMessage!!,
+                style = MaterialTheme.typography.bodyMedium,
+                color = ErrorRed
+            )
+        }
+    }
 }
 
 
@@ -329,7 +267,8 @@ private fun MinimalTextField(
 }
 
 @Composable
-private fun VacancyCard(vacancy: Vacancy) {
+private fun UiVacancyCard(vacancy: DatabaseJobCard) {
+    val jobCard = vacancy.jobCard
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,28 +279,35 @@ private fun VacancyCard(vacancy: Vacancy) {
             .padding(16.dp)
     ) {
         Text(
-            text = vacancy.title,
+            text = jobCard.jobTitle,
             style = MaterialTheme.typography.titleMedium,
             color = TextPrimary,
             fontWeight = FontWeight.Medium
         )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = vacancy.company,
+
+        jobCard.jobCompany?.let {
+            Spacer(Modifier.height(10.dp))
+            Text(
+            text = jobCard.jobCompany,
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary
         )
-        Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))}
+
         Row {
-            Text(
-                text = vacancy.city,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
-            vacancy.salary?.let { salary ->
-                Spacer(Modifier.width(12.dp))
+
+            jobCard.jobLocation?.let {it->
                 Text(
-                    text = salary,
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary
+                )
+            }
+
+            jobCard.jobSalary?.let {it->
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = it,
                     style = MaterialTheme.typography.labelSmall,
                     color = AccentGreen,
                     fontWeight = FontWeight.Medium
@@ -380,7 +326,3 @@ fun checkVacancies(vacancyCityQuery: String,vacancyTitleQuery: String, mainVm: M
     mainVm.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
-fun startNewParsing(context: Context, initialUserQuery: String = "", mainVm: MainViewModel){
-    mainVm.runVacanciesParsing()
-}

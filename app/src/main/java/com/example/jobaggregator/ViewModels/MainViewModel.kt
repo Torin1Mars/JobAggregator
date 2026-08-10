@@ -81,9 +81,9 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
         }*/
     }
 
-    public fun runVacanciesParsing(){
+    public fun runVacanciesParsing(context: Context){
         if (currentWorkUaQuery.isNotBlank()){
-            workUaParserVm.runParsing(currentWorkUaQuery, {addParsedVacanciesToDb()})
+            workUaParserVm.runParsing(context,currentWorkUaQuery, {addParsedVacanciesToDb()})
         }
 
         /*
@@ -99,9 +99,8 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
             vacanciesDatabase.deleteDb()
             vacanciesDatabase.addJobCardList(formatedList)
 
-            Log.d("MyTag", "OK")
+            Log.d("MyTag", "In database now: ${vacanciesDatabase.getVacanciesCount().toString()}")
         }
-
     }
 
     private fun formatJobCardsList(jobsCardList: MutableList<JobCard>): MutableList<DatabaseJobCard>{
@@ -117,3 +116,4 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     }
 
 }
+

@@ -3,10 +3,12 @@ package com.example.jobaggregator.ViewModels
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.Parsers.WorkUaParser
+import com.example.jobaggregator.R
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.supportingData.workUaParserRenderDelay
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -64,7 +66,7 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun runParsing(query: String, addParsedVacanciesToDb:()-> Unit){
+    fun runParsing(context: Context, query: String, addParsedVacanciesToDb:()-> Unit){
         viewModelScope.launch {
             try{
                 withTimeoutOrNull (workUaParserRenderDelay){
@@ -75,6 +77,9 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
                     _vacanciesJobCards.value = workUaParser.getParsedJobsCardsList()
 
                     addParsedVacanciesToDb()
+
+                    /*Toast.makeText(context,vacanciesJobCards.value.size + R.string.successfully_founded_vacancies_message,
+                        Toast.LENGTH_SHORT)*/
                 }
             }catch (e: TimeoutCancellationException){
                 Log.d("MyTag", "Timeout acceded!")

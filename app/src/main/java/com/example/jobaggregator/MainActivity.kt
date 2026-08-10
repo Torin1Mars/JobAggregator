@@ -77,12 +77,11 @@ fun CommonScreen(currentContext: Context) {
             Text(if (parsersLoadingStatus) "Parsers are working..." else "Run new parsing")
         }
 
-        // Secound functional button
+        // Second functional button
         Button(colors = if (!vacanciesCountHasBeenChecked ){
             ButtonDefaults.buttonColors(containerColor = Color.Red)
         } else{ButtonDefaults.buttonColors(containerColor = Color.Green)},
-
-            onClick = {mainViewModel.runVacanciesParsing()} )
+            onClick = {mainViewModel.runVacanciesParsing(currentContext)})
         {
             Text(if (vacanciesCountHasBeenChecked ) "Run parsing" else "Run new parsing")
         }
@@ -99,7 +98,5 @@ fun CommonScreen(currentContext: Context) {
             fontSize = 16.sp,
             text = "Common Screen")
     }
-
 }
-
 

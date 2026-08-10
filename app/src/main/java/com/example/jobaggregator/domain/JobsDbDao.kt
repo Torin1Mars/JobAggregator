@@ -2,10 +2,8 @@ package com.example.jobaggregator.domain
 
 import androidx.room.Dao
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.jobaggregator.data.DatabaseJobCard
-import com.example.jobaggregator.data.JobCard
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,9 +11,6 @@ interface JobsDbDao {
     //Getting
     @Query("SELECT * FROM JobsDB")
     fun get_all_Jobs (): Flow<List<DatabaseJobCard>>
-
-    @Query("SELECT * FROM JobsDB")
-    fun get_all_JobsList (): List<DatabaseJobCard>
 
     //Adding
     @Insert
@@ -29,4 +24,8 @@ interface JobsDbDao {
     //Deleting
     @Query("DELETE FROM JobsDB")
     fun deleteDb()
+
+    //Additional
+    @Query("SELECT COUNT(*) FROM JobsDB")
+    suspend fun getVacanciesCount(): Int
 }
