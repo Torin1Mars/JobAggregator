@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +23,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -36,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.modifier.modifierLocalOf
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,7 +47,6 @@ import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.data.DatabaseJobCard
-import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
 import com.example.jobaggregator.ui.theme.BorderGray
@@ -53,7 +55,6 @@ import com.example.jobaggregator.ui.theme.SurfaceDark
 import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
 import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
-
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -69,6 +70,7 @@ fun MainScreen (context: Context,  navHostController: NavHostController ) {
 fun MainScreenMainContent(context: Context, navHostController: NavHostController ){
     var vacancyQuery by remember { mutableStateOf<String>("") }
     var cityQuery by remember { mutableStateOf<String>("") }
+    var userPrompt by remember { mutableStateOf<String>("") }
 
     val errorMessage by remember { mutableStateOf<String?>("") }
 
@@ -84,7 +86,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
     val rabotaUaFoundedVacanciesCount by mainVM.rabotaUaVacanciesCount.collectAsState()
     val rabotaUaErrors by mainVM.rabotaUaErrorMessage.collectAsState()
 
-
+    val showPromptInput by mutableStateOf<Boolean>(true)
 
     fun resetUserInputs() {
         vacancyQuery = ""
@@ -105,35 +107,21 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
             fontWeight = FontWeight.SemiBold
         )
 
-        Button(
-            onClick = {navHostController.navigate(Screens.AllVacanciesListScreen.route)},
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = AccentGreen,
-                contentColor = BackgroundBlack,
-                disabledContainerColor = SurfaceDarkElevated,
-                disabledContentColor = TextSecondary
-            )
-        ){}
-
         Spacer(Modifier.height(20.dp))
 
-        MinimalTextField(
+        UserTextField(
             initialValue = vacancyQuery,
-            onValueChange = {newText ->vacancyQuery = newText },
+            onValueChange = { newText -> vacancyQuery = newText },
             label = "Vacancy",
             placeholder = "e.g. Android Developer",
             enabled = !parsersLoadingStatus
-            )
+        )
 
         Spacer(Modifier.height(12.dp))
 
-        MinimalTextField(
+        UserTextField(
             initialValue = cityQuery,
-            onValueChange = {newText ->cityQuery = newText },
+            onValueChange = { newText -> cityQuery = newText },
             label = "City",
             placeholder = "e.g. Kyiv",
             enabled = !parsersLoadingStatus
@@ -141,11 +129,13 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
 
         Spacer(Modifier.height(20.dp))
 
-        Column (modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(15.dp)){
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
+        ) {
 
             Button(
-                onClick = {checkVacancies("", "", mainVM)},
+                onClick = { checkVacancies("", "", mainVM) },
                 enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() || !parsersLoadingStatus && cityQuery.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -165,14 +155,16 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Check vacancies",
+                    Text(
+                        "Check vacancies",
                         fontWeight = FontWeight.Medium,
-                        style = MaterialTheme.typography.bodyLarge)
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             }
 
             Button(
-                onClick = {resetUserInputs()},
+                onClick = { resetUserInputs() },
                 enabled = vacancyQuery.isNotBlank() || cityQuery.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -185,14 +177,18 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                     disabledContentColor = TextSecondary
                 )
             ) {
-                Text("Clear",
+                Text(
+                    "Clear",
                     fontWeight = FontWeight.Medium,
-                    style = MaterialTheme.typography.bodyLarge)
+                    style = MaterialTheme.typography.bodyLarge
+                )
             }
 
             if (vacanciesCountHasBeenChecked) {
-                Column(modifier = Modifier.padding(vertical = 15.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier.padding(vertical = 15.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
 
                     workUaFoundedVacanciesCount?.let { it ->
                         Text(
@@ -202,13 +198,13 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                         )
                     }
 
-                    HorizontalDivider(
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp),
                         thickness = 3.dp,
                         color = AccentGreen
                     )
 
                     Button(
-                        onClick = { mainVM.runVacanciesParsing(context)},
+                        onClick = { mainVM.runVacanciesParsing(context) },
                         modifier = Modifier
                             .padding(top = 10.dp)
                             .fillMaxWidth()
@@ -230,39 +226,109 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                 }
             }
         }
-    }
+
+        if (showPromptInput) {
+            Column(modifier = Modifier.padding(vertical = 15.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp),
+                    thickness = 3.dp,
+                    color = AccentGreen
+                )
+                
+                PromptTextField(
+                    initialValue = userPrompt,
+                    onValueChange = { newText -> userPrompt = newText },
+                    label = "Ai prompt",
+                    placeholder = "You can say AI to choose better vacancies from whole poole",
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Button(
+                    onClick = { resetUserInputs() },
+                    enabled = vacancyQuery.isNotBlank() || cityQuery.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Green,
+                        contentColor = BackgroundBlack,
+                        disabledContainerColor = SurfaceDarkElevated,
+                        disabledContentColor = TextSecondary
+                    )
+                ) {
+                    Text(
+                        "Filter with AI",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+            }
 
 
+        }
 
-
-
-    Spacer(Modifier.height(15.dp))
-
-    when {
-        errorMessage != null -> {
-            Text(
-                text = errorMessage!!,
-                style = MaterialTheme.typography.bodyMedium,
-                color = ErrorRed
-            )
+        Spacer(Modifier.height(15.dp))
+        when {
+            errorMessage != null -> {
+                Text(
+                    text = errorMessage!!,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ErrorRed
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun MinimalTextField(
+private fun UserTextField(
     initialValue: String,
     onValueChange : (String)-> Unit,
     label: String,
     placeholder: String,
-    enabled: Boolean = true
+    enabled: Boolean
 ) {
     OutlinedTextField(
         value = initialValue,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
-        enabled = enabled,
         singleLine = true,
+        enabled = enabled,
+        label = { Text(label) },
+        placeholder = { Text(placeholder, color = TextSecondary) },
+        shape = RoundedCornerShape(10.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = AccentGreen,
+            unfocusedBorderColor = BorderGray,
+            disabledBorderColor = BorderGray,
+            focusedLabelColor = AccentGreen,
+            unfocusedLabelColor = TextSecondary,
+            cursorColor = AccentGreen,
+            focusedTextColor = TextPrimary,
+            unfocusedTextColor = TextPrimary,
+            focusedContainerColor = SurfaceDark,
+            unfocusedContainerColor = SurfaceDark,
+            disabledContainerColor = SurfaceDark
+        )
+    )
+}
+
+@Composable
+private fun PromptTextField(
+    initialValue: String,
+    onValueChange : (String)-> Unit,
+    label: String,
+    placeholder: String,
+) {
+    OutlinedTextField(
+        value = initialValue,
+        onValueChange = onValueChange,
+        modifier = Modifier.padding(horizontal = 5.dp).defaultMinSize(minHeight = 100.dp),
+        singleLine = false,
+        maxLines = Int.MAX_VALUE,
         label = { Text(label) },
         placeholder = { Text(placeholder, color = TextSecondary) },
         shape = RoundedCornerShape(10.dp),
