@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,10 +39,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.data.DatabaseJobCard
+import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
 import com.example.jobaggregator.ui.theme.BorderGray
@@ -58,25 +57,23 @@ import com.example.jobaggregator.ui.theme.TextSecondary
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun MainScreen (context : Context) {
-
+fun MainScreen (context: Context,  navHostController: NavHostController ) {
     Scaffold(containerColor = BackgroundBlack,
         topBar = {},
-        content = {MainScreenMainContent(context)},
+        content = {MainScreenMainContent(context, navHostController)},
         bottomBar = {})
-
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun MainScreenMainContent(context: Context){
+fun MainScreenMainContent(context: Context, navHostController: NavHostController ){
     var vacancyQuery by remember { mutableStateOf<String>("") }
     var cityQuery by remember { mutableStateOf<String>("") }
 
     val errorMessage by remember { mutableStateOf<String?>("") }
 
-    ////
-    val mainVM: MainViewModel = viewModel()
+    //
+    val mainVM: MainViewModel = hiltViewModel()
 
     val parsersLoadingStatus by mainVM.parsersBusyStatus.collectAsState()
     val vacanciesCountHasBeenChecked by mainVM.vacanciesCountHasBeenChecked.collectAsState()
@@ -86,6 +83,8 @@ fun MainScreenMainContent(context: Context){
 
     val rabotaUaFoundedVacanciesCount by mainVM.rabotaUaVacanciesCount.collectAsState()
     val rabotaUaErrors by mainVM.rabotaUaErrorMessage.collectAsState()
+
+
 
     fun resetUserInputs() {
         vacancyQuery = ""
@@ -97,7 +96,7 @@ fun MainScreenMainContent(context: Context){
             .fillMaxSize()
             .padding(horizontal = 20.dp)
     ) {
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(25.dp))
 
         Text(
             text = "Job Search",
@@ -106,7 +105,21 @@ fun MainScreenMainContent(context: Context){
             fontWeight = FontWeight.SemiBold
         )
 
-        Spacer(Modifier.height(24.dp))
+        Button(
+            onClick = {navHostController.navigate(Screens.AllVacanciesListScreen.route)},
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentGreen,
+                contentColor = BackgroundBlack,
+                disabledContainerColor = SurfaceDarkElevated,
+                disabledContentColor = TextSecondary
+            )
+        ){}
+
+        Spacer(Modifier.height(20.dp))
 
         MinimalTextField(
             initialValue = vacancyQuery,
@@ -219,6 +232,10 @@ fun MainScreenMainContent(context: Context){
         }
     }
 
+
+
+
+
     Spacer(Modifier.height(15.dp))
 
     when {
@@ -231,7 +248,6 @@ fun MainScreenMainContent(context: Context){
         }
     }
 }
-
 
 @Composable
 private fun MinimalTextField(
@@ -325,4 +341,3 @@ fun checkVacancies(vacancyCityQuery: String,vacancyTitleQuery: String, mainVm: M
 
     mainVm.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
 }
-

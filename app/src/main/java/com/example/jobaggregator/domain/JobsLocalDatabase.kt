@@ -41,7 +41,6 @@ abstract class JobsDatabase: RoomDatabase(){
 }
 
 class JobCardDBConverter(){
-
     @TypeConverter
     fun convertJobCardFromStr(formatedJobCard: String?): JobCard {
         return Gson().fromJson(formatedJobCard, JobCard::class.java )
