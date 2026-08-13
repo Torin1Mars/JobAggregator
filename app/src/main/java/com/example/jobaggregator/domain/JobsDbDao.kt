@@ -28,4 +28,7 @@ interface JobsDbDao {
     //Additional
     @Query("SELECT COUNT(*) FROM JobsDB")
     suspend fun getVacanciesCount(): Int
+
+    @Query("SELECT EXISTS(SELECT 1 FROM JobsDB LIMIT 1)")
+    fun isDatabaseEmpty(): Flow<Boolean>
 }

@@ -2,6 +2,7 @@ package com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jo
 
 import android.content.Context
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,7 +24,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -38,15 +38,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.modifier.modifierLocalOf
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.data.DatabaseJobCard
+import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
 import com.example.jobaggregator.ui.theme.BorderGray
@@ -55,6 +56,12 @@ import com.example.jobaggregator.ui.theme.SurfaceDark
 import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
 import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -68,14 +75,13 @@ fun MainScreen (context: Context,  navHostController: NavHostController ) {
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun MainScreenMainContent(context: Context, navHostController: NavHostController ){
+    val mainVM: MainViewModel = hiltViewModel()
+
     var vacancyQuery by remember { mutableStateOf<String>("") }
     var cityQuery by remember { mutableStateOf<String>("") }
     var userPrompt by remember { mutableStateOf<String>("") }
 
     val errorMessage by remember { mutableStateOf<String?>("") }
-
-    //
-    val mainVM: MainViewModel = hiltViewModel()
 
     val parsersLoadingStatus by mainVM.parsersBusyStatus.collectAsState()
     val vacanciesCountHasBeenChecked by mainVM.vacanciesCountHasBeenChecked.collectAsState()
@@ -86,7 +92,9 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
     val rabotaUaFoundedVacanciesCount by mainVM.rabotaUaVacanciesCount.collectAsState()
     val rabotaUaErrors by mainVM.rabotaUaErrorMessage.collectAsState()
 
-    val showPromptInput by mutableStateOf<Boolean>(true)
+    val isVacanciesDbEmpty by mainVM.isVacanciesDbEmpty.collectAsStateWithLifecycle()
+
+    val showPromptInput by mutableStateOf<Boolean>(false)
 
     fun resetUserInputs() {
         vacancyQuery = ""
@@ -127,13 +135,12 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
             enabled = !parsersLoadingStatus
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(15.dp))
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(15.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-
             Button(
                 onClick = { checkVacancies("", "", mainVM) },
                 enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() || !parsersLoadingStatus && cityQuery.isNotBlank(),
@@ -223,9 +230,31 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
+
+                    //TODO need to fix this button behaviour
+                    Button(
+                        onClick = {openFoundedVacanciesScreen(context, navHostController, isVacanciesDbEmpty)},
+                        enabled = !isVacanciesDbEmpty,
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Green,
+                            contentColor = BackgroundBlack,
+                            disabledContainerColor = SurfaceDarkElevated,
+                            disabledContentColor = TextSecondary
+                        )
+                    ) {
+                        Text(
+                            "Open vacancies",
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
-            }
-        }
+            }        }
 
         if (showPromptInput) {
             Column(modifier = Modifier.padding(vertical = 15.dp),
@@ -238,7 +267,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                 PromptTextField(
                     initialValue = userPrompt,
                     onValueChange = { newText -> userPrompt = newText },
-                    label = "Ai prompt",
+                    label = "AI prompt",
                     placeholder = "You can say AI to choose better vacancies from whole poole",
                 )
 
@@ -266,8 +295,6 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                 }
 
             }
-
-
         }
 
         Spacer(Modifier.height(15.dp))
@@ -319,7 +346,7 @@ private fun UserTextField(
 @Composable
 private fun PromptTextField(
     initialValue: String,
-    onValueChange : (String)-> Unit,
+    onValueChange: (String)-> Unit,
     label: String,
     placeholder: String,
 ) {
@@ -400,10 +427,19 @@ private fun UiVacancyCard(vacancy: DatabaseJobCard) {
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
-fun checkVacancies(vacancyCityQuery: String,vacancyTitleQuery: String, mainVm: MainViewModel){
-
+fun checkVacancies(vacancyCityQuery: String, vacancyTitleQuery: String, mainVm: MainViewModel){
     val manager = UserQueryManager()
     val convertedQuery = manager.convertUserQueryInput("сміла")
 
     mainVm.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+private fun openFoundedVacanciesScreen(context: Context, navHostController: NavHostController, vacanciesDbCountStatus: Boolean){
+
+    if (!vacanciesDbCountStatus){
+        navHostController.navigate(Screens.AllVacanciesListScreen.route)
+    }else {
+        Toast.makeText(context, "Don't have loaded vacancies yet !", Toast.LENGTH_SHORT)
+    }
 }

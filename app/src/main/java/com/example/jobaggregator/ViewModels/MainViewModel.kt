@@ -15,7 +15,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,7 +44,21 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     val rabotaUaVacanciesCards = rabotaUaParserVm.vacanciesJobCards
     val rabotaUaErrorMessage = rabotaUaParserVm.error
 
-    //_________________________________________________________________________________
+    init {
+        viewModelScope.launch {
+            // Triggering database creation
+            vacanciesDatabase.get_all_Jobs().firstOrNull()
+        }
+    }
+
+    val isVacanciesDbEmpty: StateFlow<Boolean> = vacanciesDatabase.isDatabaseEmpty()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2000),
+            initialValue = true //Empty during initial load
+        )
+
+    //__________________________________________________________________________//
     val vacanciesCountHasBeenChecked = combine (workUaIsLoading, rabotaUaIsLoading) {
 
         val workUaCount = workUaVacanciesCount.value?: 0
@@ -116,4 +132,3 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     }
 
 }
-
