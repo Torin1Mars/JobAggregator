@@ -45,14 +45,12 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
     fun checkVacanciesCountByQuery(convertedQuery: String ){
         viewModelScope.launch {
             try{
-                withTimeoutOrNull (workUaParserRenderDelay){
-                    _isLoading.value = true
+                _isLoading.value = true
 
-                    Log.d("MyTag", "Checking started")
-                    workUaParser.checkVacanciesCountByQuery(convertedQuery, _vacanciesCount)
+                Log.d("MyTag", "Checking started")
+                workUaParser.checkVacanciesCountByQuery(convertedQuery, _vacanciesCount)
 
-                    Log.d("MyTag", "Checking finished")
-                }
+                Log.d("MyTag", "Checking finished")
 
             }catch (e: TimeoutCancellationException){
                 Log.d("MyTag", "Timeout acceded!")

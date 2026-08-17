@@ -58,6 +58,7 @@ import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -92,7 +93,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
     val rabotaUaFoundedVacanciesCount by mainVM.rabotaUaVacanciesCount.collectAsState()
     val rabotaUaErrors by mainVM.rabotaUaErrorMessage.collectAsState()
 
-    val isVacanciesDbEmpty by mainVM.isVacanciesDbEmpty.collectAsStateWithLifecycle()
+    val vacanciesDbCount  by mainVM.dbCountFlow.collectAsState(0, Dispatchers.IO)
 
     val showPromptInput by mutableStateOf<Boolean>(false)
 
@@ -191,7 +192,8 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                 )
             }
 
-            if (vacanciesCountHasBeenChecked) {
+            //if (vacanciesCountHasBeenChecked) {
+            if (true) {
                 Column(
                     modifier = Modifier.padding(vertical = 15.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -231,10 +233,9 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                         )
                     }
 
-                    //TODO need to fix this button behaviour
                     Button(
-                        onClick = {openFoundedVacanciesScreen(context, navHostController, isVacanciesDbEmpty)},
-                        enabled = !isVacanciesDbEmpty,
+                        onClick = {openFoundedVacanciesScreen(context, navHostController, vacanciesDbCount)},
+                        enabled = if (vacanciesDbCount>0) true else false,
                         modifier = Modifier
                             .padding(top = 10.dp)
                             .fillMaxWidth()
@@ -256,7 +257,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                 }
             }        }
 
-        if (showPromptInput) {
+        if (vacanciesDbCount>0) {
             Column(modifier = Modifier.padding(vertical = 15.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp),
@@ -275,7 +276,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
 
                 Button(
                     onClick = { resetUserInputs() },
-                    enabled = vacancyQuery.isNotBlank() || cityQuery.isNotBlank(),
+                    enabled = userPrompt.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
@@ -293,7 +294,6 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
-
             }
         }
 
@@ -435,9 +435,9 @@ fun checkVacancies(vacancyCityQuery: String, vacancyTitleQuery: String, mainVm: 
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-private fun openFoundedVacanciesScreen(context: Context, navHostController: NavHostController, vacanciesDbCountStatus: Boolean){
+private fun openFoundedVacanciesScreen(context: Context, navHostController: NavHostController, dbCount: Int){
 
-    if (!vacanciesDbCountStatus){
+    if (dbCount > 0 ){
         navHostController.navigate(Screens.AllVacanciesListScreen.route)
     }else {
         Toast.makeText(context, "Don't have loaded vacancies yet !", Toast.LENGTH_SHORT)

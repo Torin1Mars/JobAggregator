@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.jobaggregator.data.DatabaseJobCard
@@ -44,19 +45,14 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     val rabotaUaVacanciesCards = rabotaUaParserVm.vacanciesJobCards
     val rabotaUaErrorMessage = rabotaUaParserVm.error
 
+    val dbCountFlow = vacanciesDatabase.getDbCountFlow()
+
     init {
         viewModelScope.launch {
             // Triggering database creation
             vacanciesDatabase.get_all_Jobs().firstOrNull()
         }
     }
-
-    val isVacanciesDbEmpty: StateFlow<Boolean> = vacanciesDatabase.isDatabaseEmpty()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(2000),
-            initialValue = true //Empty during initial load
-        )
 
     //__________________________________________________________________________//
     val vacanciesCountHasBeenChecked = combine (workUaIsLoading, rabotaUaIsLoading) {

@@ -40,18 +40,20 @@ class WorkUaParser(context: Context) {
 
         try {
             withTimeout(workUaParserCheckingPagesDelay) {
-                var respondStatus = false
+                var parsingTrying  = 5
 
-                while(!respondStatus){
+                while(parsingTrying !=0){
                     val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
-                    val htmlPageInString = currentResponse.body()!!
 
                     if (currentResponse.isSuccessful) {
+                        val htmlPageInString = currentResponse.body()!!
                         val howMuchPages = checkVacanciesCountInRespond(htmlPageInString)
+
                         vacanciesCountFlow.value = howMuchPages
-                        respondStatus = true
+                        parsingTrying = 0
                     } else {
                         //Sending query again
+                        parsingTrying -= 1
                         Log.d("MyTag", "Couldn't load initial request")
                     }
                 }
