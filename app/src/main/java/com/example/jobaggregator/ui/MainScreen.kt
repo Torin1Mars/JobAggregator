@@ -4,12 +4,8 @@ import android.content.Context
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,17 +31,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
-import com.example.jobaggregator.data.DatabaseJobCard
 import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
@@ -56,13 +48,7 @@ import com.example.jobaggregator.ui.theme.SurfaceDark
 import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
 import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlin.coroutines.coroutineContext
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -138,6 +124,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
 
         Spacer(Modifier.height(15.dp))
 
+        //////////////////////////////////////////////////////
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -191,76 +178,73 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
+            Column(
+                modifier = Modifier.padding(vertical = 15.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
 
-            //if (vacanciesCountHasBeenChecked) {
-            if (true) {
-                Column(
-                    modifier = Modifier.padding(vertical = 15.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
-                    workUaFoundedVacanciesCount?.let { it ->
-                        Text(
-                            "$it vacancies was found !",
-                            fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.bodyMedium.copy(color = Color.White, fontSize = 20.sp)
-                        )
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp),
-                        thickness = 3.dp,
-                        color = AccentGreen
+                workUaFoundedVacanciesCount?.let { it ->
+                    Text(
+                        "$it vacancies was found !",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Color.White, fontSize = 20.sp)
                     )
-
-                    Button(
-                        onClick = { mainVM.runVacanciesParsing(context) },
-                        modifier = Modifier
-                            .padding(top = 10.dp)
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentGreen,
-                            contentColor = BackgroundBlack,
-                            disabledContainerColor = SurfaceDarkElevated,
-                            disabledContentColor = TextSecondary
-                        )
-                    ) {
-                        Text(
-                            "Get vacancies",
-                            fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-
-                    Button(
-                        onClick = {openFoundedVacanciesScreen(context, navHostController, vacanciesDbCount)},
-                        enabled = if (vacanciesDbCount>0) true else false,
-                        modifier = Modifier
-                            .padding(top = 10.dp)
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Green,
-                            contentColor = BackgroundBlack,
-                            disabledContainerColor = SurfaceDarkElevated,
-                            disabledContentColor = TextSecondary
-                        )
-                    ) {
-                        Text(
-                            "Open vacancies",
-                            fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
                 }
-            }        }
 
-        if (vacanciesDbCount>0) {
-            Column(modifier = Modifier.padding(vertical = 15.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp),
+                    thickness = 3.dp,
+                    color = AccentGreen
+                )
+
+                Button(
+                    onClick = {startNewParsing(context,vacanciesCountHasBeenChecked, mainVM)},
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentGreen,
+                        contentColor = BackgroundBlack,
+                        disabledContainerColor = SurfaceDarkElevated,
+                        disabledContentColor = TextSecondary
+                    )
+                ) {
+                    Text(
+                        "Get vacancies",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+                Button(
+                    onClick = {openFoundedVacanciesScreen(context, navHostController, vacanciesDbCount)},
+                    enabled = if (vacanciesDbCount>0) true else false,
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Green,
+                        contentColor = BackgroundBlack,
+                        disabledContainerColor = SurfaceDarkElevated,
+                        disabledContentColor = TextSecondary
+                    )
+                ) {
+                    Text(
+                        "Open vacancies",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+        ////////////////////////////////////////////////////////
+
+        if (vacanciesDbCount > 0) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp),
                     thickness = 3.dp,
                     color = AccentGreen
                 )
@@ -308,6 +292,14 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
             }
         }
     }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+private fun startNewParsing(context:Context, vacanciesCountHasBeenChecked: Boolean, viewModel: MainViewModel) {
+    if (vacanciesCountHasBeenChecked){
+        viewModel.runVacanciesParsing(context)
+    }else
+        Toast.makeText(context, "You need to check vacancies before", Toast.LENGTH_SHORT)
 }
 
 @Composable
@@ -373,57 +365,6 @@ private fun PromptTextField(
             disabledContainerColor = SurfaceDark
         )
     )
-}
-
-@Composable
-private fun UiVacancyCard(vacancy: DatabaseJobCard) {
-    val jobCard = vacancy.jobCard
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceDark)
-            .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
-            .clickable { }
-            .padding(16.dp)
-    ) {
-        Text(
-            text = jobCard.jobTitle,
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
-            fontWeight = FontWeight.Medium
-        )
-
-        jobCard.jobCompany?.let {
-            Spacer(Modifier.height(10.dp))
-            Text(
-            text = jobCard.jobCompany,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
-        )
-            Spacer(Modifier.height(10.dp))}
-
-        Row {
-
-            jobCard.jobLocation?.let {it->
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary
-                )
-            }
-
-            jobCard.jobSalary?.let {it->
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = AccentGreen,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-    }
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)

@@ -45,6 +45,7 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
     val rabotaUaVacanciesCards = rabotaUaParserVm.vacanciesJobCards
     val rabotaUaErrorMessage = rabotaUaParserVm.error
 
+    val dbVacanciesFlow = vacanciesDatabase.get_all_Jobs()
     val dbCountFlow = vacanciesDatabase.getDbCountFlow()
 
     init {
@@ -111,7 +112,7 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
             vacanciesDatabase.deleteDb()
             vacanciesDatabase.addJobCardList(formatedList)
 
-            Log.d("MyTag", "In database now: ${vacanciesDatabase.getVacanciesCount().toString()}")
+            Log.d("MyTag", "In database now: ${vacanciesDatabase.getVacanciesCount()}")
         }
     }
 
