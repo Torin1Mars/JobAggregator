@@ -17,8 +17,6 @@ val rabotaUaMaxRuningWebViewsInOnes = 6
 val rabotaUaParserRenderDelay = 20.seconds
 
 
-
-
 val dateFormat : String = "dd-MM-yyyy"
 val monthUa: List<String> = listOf("січня",
         "лютого",
