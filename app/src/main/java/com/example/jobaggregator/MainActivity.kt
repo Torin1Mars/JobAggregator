@@ -14,6 +14,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
 import androidx.navigation.compose.rememberNavController
+import com.example.jobaggregator.aiModule.ChatGptScreen
+import com.example.jobaggregator.aiModule.FruitFilterScreen
 import com.example.jobaggregator.ui.AllVacanciesScreen
 import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.SingleVacancyScreen
@@ -44,7 +46,7 @@ class MainActivity:ComponentActivity() {
 @Composable
 fun AppNavigatour(navController: NavHostController, context: Context){
     NavHost(navController = navController,
-        startDestination = Screens.MainScreen.route){
+        startDestination = Screens.TempScreen.route){
 
         composable(route = Screens.MainScreen.route){
             MainScreen(context, navController)
@@ -54,13 +56,10 @@ fun AppNavigatour(navController: NavHostController, context: Context){
             AllVacanciesScreen(context, navController)
         }
 
-        composable(route = Screens.SingleVacancyScreen.route + "/" +"{vacancyDbId}") {
-            backStackEntry ->
-            val vacancyId = backStackEntry.arguments?.getString("vacancyId")
-
-            vacancyId?.let {it->
-                SingleVacancyScreen(context, vacancyIdInDb = it.toInt() )
-            }?: Toast.makeText(context, "Error, try open this vacancy card again", Toast.LENGTH_SHORT)
+        composable (route = Screens.TempScreen.route) {
+            //FruitFilterScreen(context)
+            ChatGptScreen(context)
         }
     }
+
 }

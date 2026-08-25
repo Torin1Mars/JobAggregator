@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.Packaging
+import org.gradle.kotlin.dsl.implementation
 
 plugins {
     id("com.android.application")
@@ -9,6 +10,8 @@ plugins {
 
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+
+
 }
 
 android {
@@ -17,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.jobaggregator"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -36,6 +39,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_23
         targetCompatibility = JavaVersion.VERSION_23
@@ -49,6 +53,7 @@ android {
         compose = true
         viewBinding = true
     }
+
     kotlinOptions {
         jvmTarget = "23"
     }
@@ -82,10 +87,18 @@ dependencies {
     //Dependencies for Ai module
     implementation("com.google.genai:google-genai:1.24.0")
 
-    implementation("androidx.core:core-ktx:1.12.0")
+    // For viewModels() inside Activity
+    implementation("androidx.activity:activity-ktx:1.9.0")
 
-    // Ksoup parser
-    val ksoupVer : String = "0.2.1"
+    // For viewModels() inside Fragment
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
+
+    implementation(platform("com.aallam.openai:openai-client-bom:4.1.0"))
+    implementation("com.aallam.openai:openai-client")
+    implementation("io.ktor:ktor-client-okhttp")
+
+    //Ksoup parser
+    val ksoupVer: String = "0.2.1"
     implementation("com.fleeksoft.ksoup:ksoup:$ksoupVer")
     implementation("com.fleeksoft.ksoup:ksoup-network:$ksoupVer")
 
@@ -113,16 +126,14 @@ dependencies {
     implementation ("com.google.code.gson:gson:2.10.1")
 
     //Selenium
-    implementation ("org.seleniumhq.selenium:selenium-java:4.16.1")
+    //implementation ("org.seleniumhq.selenium:selenium-java:4.16.1")
 
     //Apium
-    implementation("io.appium:java-client:9.2.0")
+    //implementation("io.appium:java-client:9.2.0")
 
-
-    // Preferences DataStore (Like SharedPreferences but safe and asynchronous)
+    // Preferences DataStore
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
     // Core DataStore dependency (Optional: Only if you need Proto DataStore)
-    implementation("androidx.datastore:datastore-core:1.2.1")
-
+    //implementation("androidx.datastore:datastore-core:1.2.1")
 }
