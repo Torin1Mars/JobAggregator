@@ -53,6 +53,10 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
         }
     }
 
+    public suspend fun getVacanciesList(): List<DatabaseJobCard>{
+        return vacanciesDatabase.get_all_JobsList()
+    }
+
     //__________________________________________________________________________//
     val vacanciesCountHasBeenChecked = combine (workUaIsLoading, rabotaUaIsLoading) {
 

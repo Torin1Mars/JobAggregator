@@ -3,19 +3,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
-import com.aallam.openai.api.chat.ChatResponseFormat
 import com.aallam.openai.api.chat.ChatRole
 import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
-import com.example.jobaggregator.aiModule.chatGptKey
-import com.example.jobaggregator.data.JobCard
+import com.example.jobaggregator.aiModule.gptKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
 
 data class ChatGptUiState(
     val prompt: String = "",
@@ -25,7 +20,7 @@ data class ChatGptUiState(
 )
 
 class ChatGptViewModel : ViewModel() {
-    private val key: String = chatGptKey
+    private val key: String = gptKey
 
     private val openAI = OpenAI(token = key)
 

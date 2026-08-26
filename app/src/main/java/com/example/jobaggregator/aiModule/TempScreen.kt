@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.ViewModel
 
 @Composable
 fun FruitFilterScreen(context: Context) {
@@ -56,5 +55,6 @@ fun FruitFilterScreen(context: Context) {
         }
 
     }
+
 }
 
