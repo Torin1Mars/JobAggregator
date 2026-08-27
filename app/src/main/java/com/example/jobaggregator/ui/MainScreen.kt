@@ -36,9 +36,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
+import com.example.jobaggregator.aiModule.ChatGptViewModel2
+import com.example.jobaggregator.data.JobCard
+import com.example.jobaggregator.ui.AiFilterUi
 import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
@@ -48,7 +52,9 @@ import com.example.jobaggregator.ui.theme.SurfaceDark
 import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
 import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -66,7 +72,6 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
 
     var vacancyQuery by remember { mutableStateOf<String>("") }
     var cityQuery by remember { mutableStateOf<String>("") }
-    var userPrompt by remember { mutableStateOf<String>("") }
 
     val errorMessage by remember { mutableStateOf<String?>("") }
 
@@ -80,8 +85,6 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
     val rabotaUaErrors by mainVM.rabotaUaErrorMessage.collectAsState()
 
     val vacanciesDbCount  by mainVM.dbCountFlow.collectAsState(0, Dispatchers.IO)
-
-    val showPromptInput by mutableStateOf<Boolean>(false)
 
     fun resetUserInputs() {
         vacancyQuery = ""
@@ -243,42 +246,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
         ////////////////////////////////////////////////////////
 
         if (vacanciesDbCount > 0) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp),
-                    thickness = 3.dp,
-                    color = AccentGreen
-                )
-                
-                PromptTextField(
-                    initialValue = userPrompt,
-                    onValueChange = { newText -> userPrompt = newText },
-                    label = "AI prompt",
-                    placeholder = "You can say AI to choose better vacancies from whole poole",
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                Button(
-                    onClick = { resetUserInputs() },
-                    enabled = userPrompt.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Green,
-                        contentColor = BackgroundBlack,
-                        disabledContainerColor = SurfaceDarkElevated,
-                        disabledContentColor = TextSecondary
-                    )
-                ) {
-                    Text(
-                        "Filter with AI",
-                        fontWeight = FontWeight.Medium,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
+            AiFilterUi(context)
         }
 
         Spacer(Modifier.height(15.dp))
@@ -335,38 +303,6 @@ private fun UserTextField(
     )
 }
 
-@Composable
-private fun PromptTextField(
-    initialValue: String,
-    onValueChange: (String)-> Unit,
-    label: String,
-    placeholder: String,
-) {
-    OutlinedTextField(
-        value = initialValue,
-        onValueChange = onValueChange,
-        modifier = Modifier.padding(horizontal = 5.dp).defaultMinSize(minHeight = 100.dp),
-        singleLine = false,
-        maxLines = Int.MAX_VALUE,
-        label = { Text(label) },
-        placeholder = { Text(placeholder, color = TextSecondary) },
-        shape = RoundedCornerShape(10.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AccentGreen,
-            unfocusedBorderColor = BorderGray,
-            disabledBorderColor = BorderGray,
-            focusedLabelColor = AccentGreen,
-            unfocusedLabelColor = TextSecondary,
-            cursorColor = AccentGreen,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            focusedContainerColor = SurfaceDark,
-            unfocusedContainerColor = SurfaceDark,
-            disabledContainerColor = SurfaceDark
-        )
-    )
-}
-
 @RequiresApi(Build.VERSION_CODES.Q)
 fun checkVacancies(vacancyCityQuery: String, vacancyTitleQuery: String, mainVm: MainViewModel){
     val manager = UserQueryManager()
@@ -375,9 +311,9 @@ fun checkVacancies(vacancyCityQuery: String, vacancyTitleQuery: String, mainVm: 
     mainVm.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
 }
 
+
 @RequiresApi(Build.VERSION_CODES.O)
 private fun openFoundedVacanciesScreen(context: Context, navHostController: NavHostController, dbCount: Int){
-
     if (dbCount > 0 ){
         navHostController.navigate(Screens.AllVacanciesListScreen.route)
     }else {

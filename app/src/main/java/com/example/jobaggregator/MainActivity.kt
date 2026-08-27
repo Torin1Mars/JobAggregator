@@ -14,11 +14,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
 import androidx.navigation.compose.rememberNavController
-import com.example.jobaggregator.aiModule.ChatGptScreen
-import com.example.jobaggregator.aiModule.FruitFilterScreen
 import com.example.jobaggregator.ui.AllVacanciesScreen
 import com.example.jobaggregator.ui.Screens
-import com.example.jobaggregator.ui.SingleVacancyScreen
 import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.MainScreen
 import com.example.jobaggregator.ui.theme.JobAggregatorTheme
 
@@ -46,7 +43,7 @@ class MainActivity:ComponentActivity() {
 @Composable
 fun AppNavigatour(navController: NavHostController, context: Context){
     NavHost(navController = navController,
-        startDestination = Screens.TempScreen.route){
+        startDestination = Screens.MainScreen.route){
 
         composable(route = Screens.MainScreen.route){
             MainScreen(context, navController)
@@ -56,9 +53,8 @@ fun AppNavigatour(navController: NavHostController, context: Context){
             AllVacanciesScreen(context, navController)
         }
 
-        composable (route = Screens.TempScreen.route) {
-            //FruitFilterScreen(context)
-            ChatGptScreen(context)
+        composable (route = Screens.AiAnswerScreen.route) {
+            //ChatGptScreen(context)
         }
     }
 

@@ -1,61 +1,49 @@
-import androidx.lifecycle.ViewModel
+package com.example.jobaggregator.aiModule
 
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aallam.openai.api.chat.ChatCompletionRequest
-import com.aallam.openai.api.chat.ChatMessage
-import com.aallam.openai.api.chat.ChatRole
-import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
-import com.example.jobaggregator.aiModule.gptKey
+import com.example.jobaggregator.data.JobCard
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
-data class ChatGptUiState(
-    val prompt: String = "",
-    val response: String = "",
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
+class ChatGptViewModel2 : ViewModel() {
+    private val openAiObj: OpenAI = OpenAI(token = gptKey)
+    private var gptService: GptFilterService? = null
 
-class ChatGptViewModel : ViewModel() {
-    private val key: String = gptKey
+    private val _uiState = MutableStateFlow<VacancyAiUiState>(VacancyAiUiState.Idle)
+    val uiState: StateFlow<VacancyAiUiState> = _uiState.asStateFlow()
 
-    private val openAI = OpenAI(token = key)
-
-    private val _uiState = MutableStateFlow(ChatGptUiState())
-    val uiState: StateFlow<ChatGptUiState> = _uiState.asStateFlow()
-
-    fun onPromptChange(newPrompt: String) {
-        _uiState.value = _uiState.value.copy(prompt = newPrompt)
-    }
-
-    fun sendPrompt() {
-        val currentPrompt = _uiState.value.prompt.trim()
-        if (currentPrompt.isEmpty()) return
-
-        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
+    fun askAi(vacancies: List<JobCard>, userRequest: String) {
         viewModelScope.launch {
+            _uiState.value = VacancyAiUiState.Loading
+            gptService = GptFilterService()
+
             try {
-                val completion = openAI.chatCompletion(
-                    ChatCompletionRequest(
-                        model = ModelId("gpt-5.4-mini"),
-                        messages = listOf(
-                            ChatMessage(role = ChatRole.User, content = currentPrompt)
-                        )
-                    )
-                )
-                val reply = completion.choices.first().message.content.orEmpty()
-                _uiState.value = _uiState.value.copy(response = reply, isLoading = false)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = e.localizedMessage ?: "Something went wrong",
-                    isLoading = false
-                )
+                withTimeout(gptAnswerDelay) {
+                    val reply = gptService!!.queryVacanciesWithAi(openAiObj,vacancies, userRequest)
+
+                    _uiState.value = VacancyAiUiState.Success(reply)
+                }
+            } catch (e: TimeoutCancellationException){
+                VacancyAiUiState.Error("Timeout exceeded!")
+            }
+            catch (e: Exception) {
+                VacancyAiUiState.Error(e.localizedMessage ?: "Error while checking!")
             }
         }
     }
+}
+
+
+sealed interface VacancyAiUiState {
+    data object Idle : VacancyAiUiState
+    data object Loading : VacancyAiUiState
+    data class Success(val answer: VacancyAiAnswer) : VacancyAiUiState
+    data class Error(val message: String) : VacancyAiUiState
 }
 

@@ -1,8 +1,5 @@
 package com.example.jobaggregator.aiModule
 
-import android.content.Context
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
 import com.aallam.openai.api.chat.ChatResponseFormat
@@ -33,6 +30,11 @@ class GptFilterService() {
             ),
 
             ChatMessage(
+                role = ChatRole.System,
+                content = respondFormatInstructions
+            ),
+
+            ChatMessage(
                 role = ChatRole.User,
                 content = userRequest
             ),
@@ -51,7 +53,8 @@ class GptFilterService() {
     ): VacancyAiAnswer {
         val request = ChatCompletionRequest(
             model = ModelId(gptModelTitle),
-            messages = buildVacancyQueryMessages(vacancies, userRequest),
+            messages = //listOf(ChatMessage(role = ChatRole.User, content = userRequest)),
+                buildVacancyQueryMessages(vacancies, userRequest),
             responseFormat = ChatResponseFormat.JsonObject
         )
 
@@ -66,6 +69,6 @@ class GptFilterService() {
 //Model's answer model
 @Serializable
 data class VacancyAiAnswer(
-    val matchedVacancyIds: List<String>,
+    val matchedList: List<String>,
     val explanation: String
 )
