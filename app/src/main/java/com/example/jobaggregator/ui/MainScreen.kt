@@ -7,7 +7,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,12 +35,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
-import com.example.jobaggregator.aiModule.ChatGptViewModel2
-import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.ui.AiFilterUi
 import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.theme.AccentGreen
@@ -52,9 +48,7 @@ import com.example.jobaggregator.ui.theme.SurfaceDark
 import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
 import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -148,9 +142,9 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
             ) {
                 if (parsersLoadingStatus) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(30.dp),
                         color = Color.White,
-                        strokeWidth = 2.dp
+                        strokeWidth = 4.dp
                     )
                 } else {
                     Text(
@@ -175,8 +169,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                     disabledContentColor = TextSecondary
                 )
             ) {
-                Text(
-                    "Clear",
+                Text("Clear",
                     fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -185,7 +178,6 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
                 modifier = Modifier.padding(vertical = 15.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
                 workUaFoundedVacanciesCount?.let { it ->
                     Text(
                         "$it vacancies was found !",
@@ -246,7 +238,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
         ////////////////////////////////////////////////////////
 
         if (vacanciesDbCount > 0) {
-            AiFilterUi(context)
+            AiFilterUi(context, navHostController)
         }
 
         Spacer(Modifier.height(15.dp))

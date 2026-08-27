@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
 import androidx.navigation.compose.rememberNavController
+import com.example.jobaggregator.ui.AiAnswerScreen
 import com.example.jobaggregator.ui.AllVacanciesScreen
 import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.com.example.jobaggregator.ui.com.example.jobaggregator.com.example.jobaggregator.ui.com.example.jobaggregator.MainScreen
@@ -54,7 +55,7 @@ fun AppNavigatour(navController: NavHostController, context: Context){
         }
 
         composable (route = Screens.AiAnswerScreen.route) {
-            //ChatGptScreen(context)
+            AiAnswerScreen(context)
         }
     }
 

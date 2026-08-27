@@ -8,6 +8,7 @@ import com.example.jobaggregator.Parsers.WorkUaParser
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.ViewModels.RabotaUaParserVm
 import com.example.jobaggregator.ViewModels.WorkUaParserVm
+import com.example.jobaggregator.aiModule.ChatGptViewModel
 import com.example.jobaggregator.domain.JobsDatabase
 import com.example.jobaggregator.domain.JobsDbDao
 import dagger.Module
@@ -51,6 +52,12 @@ object AppProviders {
     @Provides
     fun provideRabotaUaParserVm(@ApplicationContext appContext: Context): RabotaUaParserVm{
         return RabotaUaParserVm(appContext)
+    }
+
+    @Singleton
+    @Provides
+    fun provideGptViewModelVm(): ChatGptViewModel{
+        return ChatGptViewModel()
     }
 
 }

@@ -1,35 +1,49 @@
 package com.example.jobaggregator.ui
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.room.util.TableInfo
 import com.example.jobaggregator.ViewModels.MainViewModel
+import com.example.jobaggregator.aiModule.ChatGptViewModel
 import com.example.jobaggregator.aiModule.VacancyAiAnswer
+import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.ui.theme.AccentGreen
 
 @Composable
-fun AiAnswerScreen(aiAnswer : VacancyAiAnswer){
+fun AiAnswerScreen(context: Context){
 
     val mainVM : MainViewModel = hiltViewModel()
+    val gptVM : ChatGptViewModel = hiltViewModel()
 
-    Scaffold(modifier = Modifier,
-        content = {MainContent(aiAnswer, mainVM)})
+    val gptAnswer = gptVM.aiReplyState.collectAsState()
+
+    Scaffold(modifier = Modifier.fillMaxSize(),
+        content = {MainContent(gptAnswer.value)})
 
 }
 
 @Composable
-private fun MainContent(aiAnswer: VacancyAiAnswer, mainViewModel: MainViewModel){
+private fun MainContent(aiAnswer: VacancyAiAnswer){
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    //TODO Need to check why gpt answers dosen't show
+    Log.d("MyTag", aiAnswer.explanation)
+
+    Column(modifier = Modifier.fillMaxSize()) {
         AiExplanation(aiAnswer.explanation)
 
         Spacer(modifier = Modifier.height(15.dp))
@@ -38,18 +52,20 @@ private fun MainContent(aiAnswer: VacancyAiAnswer, mainViewModel: MainViewModel)
             thickness = 3.dp,
             color = AccentGreen
         )
-        MatchedVacancies(aiAnswer.matchedList, mainViewModel)
+        //MatchedVacancies(aiAnswer.matchedList)
     }
 }
 
 @Composable
 private fun AiExplanation(AiExplanation: String) {
-    //TODO
-
+    Text(text = AiExplanation,
+        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.bodyLarge
+    )
 }
 
 @Composable
-private fun MatchedVacancies(matchedVacanciesId: List<String>, mainViewModel: MainViewModel) {
+private fun MatchedVacancies(matchedVacanciesList: List<JobCard>) {
     //TODO
 }
 
