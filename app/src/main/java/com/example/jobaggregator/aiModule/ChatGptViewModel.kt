@@ -1,6 +1,7 @@
 package com.example.jobaggregator.aiModule
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aallam.openai.client.OpenAI
@@ -29,6 +30,11 @@ class ChatGptViewModel @Inject constructor(): ViewModel() {
     private val _filteredVacanciesIdList = MutableStateFlow<List<String>>(emptyList())
     val filteredVacanciesIdList = _filteredVacanciesIdList.asStateFlow()
 
+
+     init {
+         Log.d("MyTag", "Ai view model created")
+     }
+
     fun askAi(vacancies: List<JobCard>, userRequest: String) {
         viewModelScope.launch {
             _uiState.value = VacancyAiUiState.Loading
@@ -46,6 +52,8 @@ class ChatGptViewModel @Inject constructor(): ViewModel() {
             } catch (e: Exception) {
                 VacancyAiUiState.Error(e.localizedMessage ?: "Error while checking!")
             }
+
+            Log.d("MyTag", aiReplyState.value.explanation)
         }
     }
 

@@ -89,16 +89,4 @@ class WorkUaParserVm @Inject constructor(@ApplicationContext context: Context,
             }
         }
     }
-
-    fun cleanAfterParsing(){
-        _vacanciesCount.value = null
-
-        _respondPagesCount.value = null
-        _vacanciesIds.value = emptyList()
-        _vacanciesJobCards.value = emptyList()
-    }
-
-    override fun onCleared(){
-
-    }
 }

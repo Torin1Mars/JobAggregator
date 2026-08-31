@@ -38,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
+import com.example.jobaggregator.aiModule.ChatGptViewModel
 import com.example.jobaggregator.ui.AiFilterUi
 import com.example.jobaggregator.ui.Screens
 import com.example.jobaggregator.ui.theme.AccentGreen
@@ -52,17 +53,20 @@ import kotlinx.coroutines.Dispatchers
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun MainScreen (context: Context,  navHostController: NavHostController ) {
+fun MainScreen (context: Context,  navHostController: NavHostController, mainVm: MainViewModel, gptViewModel:ChatGptViewModel ) {
     Scaffold(containerColor = BackgroundBlack,
         topBar = {},
-        content = {MainScreenMainContent(context, navHostController)},
+        content = {MainScreenMainContent(context, navHostController, mainVm, gptViewModel)},
         bottomBar = {})
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun MainScreenMainContent(context: Context, navHostController: NavHostController ){
-    val mainVM: MainViewModel = hiltViewModel()
+fun MainScreenMainContent(context: Context,
+                          navHostController: NavHostController,
+                          mainViewModel: MainViewModel,
+                          gptViewModel: ChatGptViewModel){
+    val mainVM: MainViewModel = mainViewModel
 
     var vacancyQuery by remember { mutableStateOf<String>("") }
     var cityQuery by remember { mutableStateOf<String>("") }
@@ -238,7 +242,7 @@ fun MainScreenMainContent(context: Context, navHostController: NavHostController
         ////////////////////////////////////////////////////////
 
         if (vacanciesDbCount > 0) {
-            AiFilterUi(context, navHostController)
+            AiFilterUi(context, navHostController, mainVM,  gptViewModel)
         }
 
         Spacer(Modifier.height(15.dp))

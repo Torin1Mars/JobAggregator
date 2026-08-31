@@ -3,17 +3,21 @@ package com.example.jobaggregator
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
+import com.example.jobaggregator.ViewModels.MainViewModel
+import com.example.jobaggregator.aiModule.ChatGptViewModel
 import com.example.jobaggregator.ui.AiAnswerScreen
 import com.example.jobaggregator.ui.AllVacanciesScreen
 import com.example.jobaggregator.ui.Screens
@@ -32,6 +36,7 @@ class MainActivity:ComponentActivity() {
 
         setContent {
             val navHostController = rememberNavController()
+
             JobAggregatorTheme(
                 darkTheme = true,
                 content = {AppNavigatour(navHostController, this)}
@@ -42,12 +47,41 @@ class MainActivity:ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun AppNavigatour(navController: NavHostController, context: Context){
-    NavHost(navController = navController,
-        startDestination = Screens.MainScreen.route){
+fun AppNavigatour(navController: NavHostController,
+                  context: Context){
 
+    NavHost(navController = navController,
+        startDestination = "home_graph"){
+
+        navigation (startDestination = Screens.MainScreen.route, route = "home_graph"){
+
+
+            composable(route = Screens.MainScreen.route) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry("home_graph")
+                }
+                val mainViewModel: MainViewModel = hiltViewModel(parentEntry)
+                val gptViewModel: ChatGptViewModel = hiltViewModel(parentEntry)
+
+                //Content
+                MainScreen(context, navController, mainViewModel, gptViewModel)
+            }
+
+            composable(route = Screens.AiAnswerScreen.route) { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry("home_graph")
+                }
+                val mainViewModel: MainViewModel = hiltViewModel(parentEntry)
+                val gptViewModel: ChatGptViewModel = hiltViewModel(parentEntry)
+
+                //Content
+                AiAnswerScreen(context, mainViewModel, gptViewModel)
+            }
+        }
+
+        /*
         composable(route = Screens.MainScreen.route){
-            MainScreen(context, navController)
+            MainScreen(context, navController, mainViewModel, gptViewModel)
         }
 
         composable(route = Screens.AllVacanciesListScreen.route) {
@@ -55,8 +89,8 @@ fun AppNavigatour(navController: NavHostController, context: Context){
         }
 
         composable (route = Screens.AiAnswerScreen.route) {
-            AiAnswerScreen(context)
-        }
+            AiAnswerScreen(context, mainViewModel, gptViewModel)
+        }*/
     }
 
 }

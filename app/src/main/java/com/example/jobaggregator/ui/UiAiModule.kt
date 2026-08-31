@@ -28,8 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.aiModule.ChatGptViewModel
@@ -47,11 +45,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
-fun AiFilterUi(context: Context, navHostController: NavHostController){
-    val mainVM: MainViewModel = hiltViewModel()
-    val gptVM :ChatGptViewModel = viewModel()
+fun AiFilterUi(context: Context,
+               navHostController: NavHostController,
+               mainViewModel: MainViewModel,
+               gptViewModel: ChatGptViewModel){
 
-    val gptVmState = gptVM.uiState.collectAsState()
+    val gptVmState = gptViewModel.uiState.collectAsState()
     var userPrompt by remember { mutableStateOf<String>("") }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -70,7 +69,7 @@ fun AiFilterUi(context: Context, navHostController: NavHostController){
         Spacer(Modifier.height(15.dp))
 
         Button(
-            onClick = {runNewQuery(mainVM, gptVM, userPrompt)},
+            onClick = {runNewQuery(mainViewModel, gptViewModel, userPrompt)},
             enabled = userPrompt.isNotBlank(),
             modifier = Modifier
                 .fillMaxWidth()
@@ -101,7 +100,7 @@ fun AiFilterUi(context: Context, navHostController: NavHostController){
             Spacer(Modifier.height(10.dp))
 
             Button(
-                onClick = {navHostController.navigate(Screens.AiAnswerScreen.route); gptVM.setToIdle()},
+                onClick = {navHostController.navigate(Screens.AiAnswerScreen.route); gptViewModel.setToIdle()},
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
