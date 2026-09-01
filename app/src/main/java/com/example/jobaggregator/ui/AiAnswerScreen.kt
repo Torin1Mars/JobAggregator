@@ -15,19 +15,24 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.aiModule.ChatGptViewModel
 import com.example.jobaggregator.aiModule.VacancyAiAnswer
 import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
+import io.ktor.util.debug.initContextInDebugMode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun AiAnswerScreen(context: Context, mainViewModel: MainViewModel, gptViewModel: ChatGptViewModel){
@@ -35,41 +40,64 @@ fun AiAnswerScreen(context: Context, mainViewModel: MainViewModel, gptViewModel:
     val mainVM = mainViewModel
     val gptVM = gptViewModel
 
-    val gptAnswer = gptVM.aiReplyState.collectAsState()
+    val gptAnswer = gptVM.aiReplyState.value
+    var chosenVacanciesList = remember { mutableListOf<JobCard>() }
 
-    //TODO continuing here
+    //Loading Ai chosen vacancies
+    LaunchedEffect (Unit){
+        val gptChosenVacanciesList = gptAnswer.matchedList
+
+        if (gptChosenVacanciesList.isNotEmpty()){
+            CoroutineScope(Dispatchers.IO).launch {
+                chosenVacanciesList = mainVM.getVacanciesByListIds(gptChosenVacanciesList).toMutableList()
+            }
+        }
+    }
 
     Scaffold(containerColor = BackgroundBlack,
         topBar = {},
-        content = {MainContent(gptAnswer.value)},
+        content = {MainContent(gptAnswer,chosenVacanciesList )},
         bottomBar = {})
 }
 
 @Composable
-private fun MainContent(aiAnswer: VacancyAiAnswer){
+private fun MainContent(aiAnswer: VacancyAiAnswer, chosenJobCardsList: MutableList<JobCard>){
 
-    Log.d("MyTag", aiAnswer.explanation)
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 35.dp)
+        .padding(horizontal = 10.dp)) {
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        AiExplanation(aiAnswer.explanation)
-
-        Spacer(modifier = Modifier.height(15.dp))
+        if (aiAnswer.explanation.isNotBlank()){
+            Text(text = "Ai answer:",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White
+            )
+            AiExplanation(aiAnswer.explanation)
+        }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp),
             thickness = 3.dp,
             color = AccentGreen
         )
-        //MatchedVacancies(aiAnswer.matchedList)
+
+        if (chosenJobCardsList.isEmpty()){
+            Text(text = "Vacancies:",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White
+            )
+            MatchedVacancies(chosenJobCardsList)
+        }
+
     }
 }
 
 @Composable
-private fun AiExplanation(AiExplanation: String) {
+private fun AiExplanation(aiExplanation: String) {
     Surface(modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(5.dp),
         color = MaterialTheme.colorScheme.onPrimary) {
 
-        Text(text = "AiExplanation",
+        Text(modifier = Modifier.padding(15.dp),
+            text = aiExplanation,
             fontWeight = FontWeight.Medium,
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White
@@ -79,6 +107,16 @@ private fun AiExplanation(AiExplanation: String) {
 
 @Composable
 private fun MatchedVacancies(matchedVacanciesList: List<JobCard>) {
-    //TODO
-}
+    Column(modifier = Modifier.fillMaxWidth()
+        .padding(horizontal = 10.dp)) {
 
+        matchedVacanciesList.forEach { vacancyCard->
+            UiVacancyCard(vacancyCard, Color.Blue)
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 5.dp),
+                thickness = 3.dp,
+                color = Color.Blue
+            )
+        }
+    }
+}

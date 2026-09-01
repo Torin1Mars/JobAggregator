@@ -49,11 +49,12 @@ class ChatGptViewModel @Inject constructor(): ViewModel() {
                 }
             } catch (e: TimeoutCancellationException){
                 VacancyAiUiState.Error("Timeout exceeded!")
+                setToIdle()
+
             } catch (e: Exception) {
                 VacancyAiUiState.Error(e.localizedMessage ?: "Error while checking!")
             }
 
-            Log.d("MyTag", aiReplyState.value.explanation)
         }
     }
 

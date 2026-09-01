@@ -15,6 +15,9 @@ interface JobsDbDao {
     @Query("SELECT * FROM JobsDB")
     suspend fun get_all_JobsList (): List<DatabaseJobCard>
 
+    @Query("SELECT * FROM JobsDB WHERE job_jobIdOnWebsite IN (:jobIds)")
+    suspend fun getJobsByIds(jobIds: List<String>): List<DatabaseJobCard>
+
     //Adding
     @Insert
     fun addOneJobCard(newJobCard: DatabaseJobCard): Unit

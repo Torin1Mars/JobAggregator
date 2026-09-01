@@ -67,6 +67,15 @@ fun AppNavigatour(navController: NavHostController,
                 MainScreen(context, navController, mainViewModel, gptViewModel)
             }
 
+            composable(route = Screens.AllVacanciesListScreen.route) {backStackEntry->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry("home_graph")
+                }
+                val mainViewModel: MainViewModel = hiltViewModel(parentEntry)
+
+                AllVacanciesScreen(context, navController, mainViewModel)
+            }
+
             composable(route = Screens.AiAnswerScreen.route) { backStackEntry ->
                 val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry("home_graph")
@@ -78,19 +87,6 @@ fun AppNavigatour(navController: NavHostController,
                 AiAnswerScreen(context, mainViewModel, gptViewModel)
             }
         }
-
-        /*
-        composable(route = Screens.MainScreen.route){
-            MainScreen(context, navController, mainViewModel, gptViewModel)
-        }
-
-        composable(route = Screens.AllVacanciesListScreen.route) {
-            AllVacanciesScreen(context, navController)
-        }
-
-        composable (route = Screens.AiAnswerScreen.route) {
-            AiAnswerScreen(context, mainViewModel, gptViewModel)
-        }*/
     }
 
 }

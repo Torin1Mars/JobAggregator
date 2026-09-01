@@ -57,6 +57,20 @@ class MainViewModel @Inject constructor(@ApplicationContext context: Context,
         return vacanciesDatabase.get_all_JobsList()
     }
 
+    public suspend fun getVacanciesByListIds(vacanciesIdsList: List<String>): List<JobCard>{
+        val jobCardsList = mutableListOf<JobCard>()
+
+        val jobDatabaseList = vacanciesDatabase.getJobsByIds(vacanciesIdsList)
+
+        if (jobDatabaseList.isNotEmpty()){
+            jobDatabaseList.forEach { databaseInstance->
+                jobCardsList.add(databaseInstance.jobCard)
+            }
+        }
+
+        return jobCardsList
+    }
+
     //__________________________________________________________________________//
     val vacanciesCountHasBeenChecked = combine (workUaIsLoading, rabotaUaIsLoading) {
 

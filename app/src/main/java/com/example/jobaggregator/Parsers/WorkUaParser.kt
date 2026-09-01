@@ -45,6 +45,7 @@ class WorkUaParser(context: Context) {
                 while(parsingTrying !=0){
                     val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
 
+                    //TODO need to check parser bechaviour
                     if (currentResponse.isSuccessful) {
                         val htmlPageInString = currentResponse.body()!!
                         val howMuchPages = checkVacanciesCountInRespond(htmlPageInString)

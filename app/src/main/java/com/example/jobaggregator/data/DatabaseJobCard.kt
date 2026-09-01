@@ -1,5 +1,6 @@
 package com.example.jobaggregator.data
 
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
@@ -12,5 +13,7 @@ data class DatabaseJobCard(
     val idInDb : Int = 0,
 
     val publicationDate: String,
+
+    @Embedded(prefix =  "job_")
     val jobCard: JobCard
 )

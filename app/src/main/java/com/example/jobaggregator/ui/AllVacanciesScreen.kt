@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -44,6 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.data.DatabaseJobCard
+import com.example.jobaggregator.data.JobCard
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BorderGray
 import com.example.jobaggregator.ui.theme.SurfaceDark
@@ -52,9 +54,9 @@ import com.example.jobaggregator.ui.theme.TextSecondary
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AllVacanciesScreen(context : Context, navHostController : NavHostController){
+fun AllVacanciesScreen(context : Context, navHostController : NavHostController, mainVM: MainViewModel){
 
-    val mainViewModel = hiltViewModel<MainViewModel>()
+    val mainViewModel = mainVM
     val vacanciesList = mainViewModel.dbVacanciesFlow.collectAsState(initial = emptyList())
     //Modifier settings for current Screen
     val modifier = Modifier
@@ -80,7 +82,7 @@ private fun MainContent(vacanciesList: List<DatabaseJobCard>) {
     LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 20.dp).padding(horizontal = 10.dp))
     {
         items(count = vacanciesList.size, key = {vacanciesList[it].idInDb}){vacancyItem->
-            UiVacancyCard(vacanciesList[vacancyItem])
+            UiVacancyCard(vacanciesList[vacancyItem].jobCard, BorderGray)
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp),
                 thickness = 3.dp,
@@ -91,9 +93,8 @@ private fun MainContent(vacanciesList: List<DatabaseJobCard>) {
 }
 
 @Composable
-private fun UiVacancyCard(CurrentVacancyCard: DatabaseJobCard) {
-    val CardDbId = CurrentVacancyCard.idInDb
-    val vacancyCard = CurrentVacancyCard.jobCard
+public fun UiVacancyCard(currentVacancyCard: JobCard, borderColor: Color) {
+    val vacancyCard = currentVacancyCard
 
     val vacancyURl = vacancyCard.jobUrl
     val currentContext = LocalContext.current
@@ -105,7 +106,7 @@ private fun UiVacancyCard(CurrentVacancyCard: DatabaseJobCard) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(SurfaceDark)
-            .border(2.dp, BorderGray, RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable (
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(bounded = true))
