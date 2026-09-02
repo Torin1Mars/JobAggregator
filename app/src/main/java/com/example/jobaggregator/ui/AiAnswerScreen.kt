@@ -18,7 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +35,11 @@ import com.example.jobaggregator.ui.theme.BackgroundBlack
 import io.ktor.util.debug.initContextInDebugMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 
 @Composable
 fun AiAnswerScreen(context: Context, mainViewModel: MainViewModel, gptViewModel: ChatGptViewModel){
@@ -41,7 +48,8 @@ fun AiAnswerScreen(context: Context, mainViewModel: MainViewModel, gptViewModel:
     val gptVM = gptViewModel
 
     val gptAnswer = gptVM.aiReplyState.value
-    var chosenVacanciesList = remember { mutableListOf<JobCard>() }
+    val _chosenVacanciesList = MutableStateFlow<List<JobCard>>(emptyList())
+    val chosenVacanciesList by _chosenVacanciesList.collectAsState()
 
     //Loading Ai chosen vacancies
     LaunchedEffect (Unit){
@@ -49,19 +57,24 @@ fun AiAnswerScreen(context: Context, mainViewModel: MainViewModel, gptViewModel:
 
         if (gptChosenVacanciesList.isNotEmpty()){
             CoroutineScope(Dispatchers.IO).launch {
-                chosenVacanciesList = mainVM.getVacanciesByListIds(gptChosenVacanciesList).toMutableList()
+                Log.d("MyTag", "Size: ${chosenVacanciesList.size}")
+                _chosenVacanciesList.value = mainVM.getVacanciesByListIds(gptChosenVacanciesList)
+
+                Log.d("MyTag", "Size: ${chosenVacanciesList.size}")
             }
         }
     }
 
+
+    //TODO continuing here :
     Scaffold(containerColor = BackgroundBlack,
         topBar = {},
-        content = {MainContent(gptAnswer,chosenVacanciesList )},
+        content = {MainContent(gptAnswer, chosenVacanciesList)},
         bottomBar = {})
 }
 
 @Composable
-private fun MainContent(aiAnswer: VacancyAiAnswer, chosenJobCardsList: MutableList<JobCard>){
+private fun MainContent(aiAnswer: VacancyAiAnswer, chosenJobCardsList: List<JobCard>){
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 35.dp)
         .padding(horizontal = 10.dp)) {
@@ -79,14 +92,14 @@ private fun MainContent(aiAnswer: VacancyAiAnswer, chosenJobCardsList: MutableLi
             color = AccentGreen
         )
 
-        if (chosenJobCardsList.isEmpty()){
+        if (chosenJobCardsList.isNotEmpty()){
             Text(text = "Vacancies:",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White
             )
+
             MatchedVacancies(chosenJobCardsList)
         }
-
     }
 }
 
@@ -107,13 +120,11 @@ private fun AiExplanation(aiExplanation: String) {
 
 @Composable
 private fun MatchedVacancies(matchedVacanciesList: List<JobCard>) {
-    Column(modifier = Modifier.fillMaxWidth()
-        .padding(horizontal = 10.dp)) {
-
+    Column(modifier = Modifier.fillMaxWidth()) {
         matchedVacanciesList.forEach { vacancyCard->
             UiVacancyCard(vacancyCard, Color.Blue)
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 5.dp),
+            HorizontalDivider(modifier = Modifier.padding(vertical = 15.dp),
                 thickness = 3.dp,
                 color = Color.Blue
             )

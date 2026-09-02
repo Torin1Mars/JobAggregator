@@ -45,7 +45,6 @@ class WorkUaParser(context: Context) {
                 while(parsingTrying !=0){
                     val currentResponse = retrofitInstance.api.getJobsQueryAsString(userQuery)
 
-                    //TODO need to check parser bechaviour
                     if (currentResponse.isSuccessful) {
                         val htmlPageInString = currentResponse.body()!!
                         val howMuchPages = checkVacanciesCountInRespond(htmlPageInString)
@@ -92,7 +91,6 @@ class WorkUaParser(context: Context) {
             val htmlPageInString = currentResponse.body()!!
 
             if (currentResponse.isSuccessful) {
-
                 val howMuchPages = checkIfSeveralPages(htmlPageInString)
 
                 if (howMuchPages > 1){
@@ -107,7 +105,6 @@ class WorkUaParser(context: Context) {
 
                             jobsCardsList += foundedJobs
                             Log.d("MyTag", "Page $page vacancies - ${foundedJobs.size}")
-
 
                         }catch (e: Exception){
                             CoroutineScope(Dispatchers.Main).launch {
@@ -131,7 +128,6 @@ class WorkUaParser(context: Context) {
                         CoroutineScope(Dispatchers.Main).launch {
                             Toast.makeText(appContext, R.string.errorDataLoading, Toast.LENGTH_SHORT).show()
                         }
-
                         Log.d("MyTag", e.message.toString())
                     }
                 }
@@ -216,8 +212,7 @@ class WorkUaParser(context: Context) {
 
         val document = Ksoup.parse(jobHtmlPage)
 
-        val element = document.selectFirst("time.text-default-7")
-        val rawDate = element!!.attr("datetime").substringBefore(" ")
+        val rawDate = document.selectFirst("time[datetime]")?.attr("datetime")!!.substringBefore(" ")
         val formater = DateTimeFormatter.ofPattern(dateFormat)
         val date = LocalDate.parse(rawDate).format(formater).toString()
 

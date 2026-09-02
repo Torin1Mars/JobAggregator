@@ -30,8 +30,7 @@ abstract class JobsDatabase: RoomDatabase(){
                     instance = Room.databaseBuilder(
                         context.applicationContext,
                         JobsDatabase::class.java,
-                        "JobsDB"
-                    ).fallbackToDestructiveMigration(true)
+                        "JobsDB")
                         .build()
                     INSTANCE = instance
                 }
