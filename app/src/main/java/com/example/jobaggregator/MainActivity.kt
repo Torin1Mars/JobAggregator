@@ -13,7 +13,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.example.jobaggregator.ViewModels.MainViewModel
@@ -36,7 +35,6 @@ class MainActivity:ComponentActivity() {
 
         setContent {
             val navHostController = rememberNavController()
-
             JobAggregatorTheme(
                 darkTheme = true,
                 content = {AppNavigatour(navHostController, this)}
@@ -55,7 +53,6 @@ fun AppNavigatour(navController: NavHostController,
 
         navigation (startDestination = Screens.MainScreen.route, route = "home_graph"){
 
-
             composable(route = Screens.MainScreen.route) { backStackEntry ->
                 val parentEntry = remember(backStackEntry) {
                     navController.getBackStackEntry("home_graph")
@@ -73,6 +70,7 @@ fun AppNavigatour(navController: NavHostController,
                 }
                 val mainViewModel: MainViewModel = hiltViewModel(parentEntry)
 
+                //Content
                 AllVacanciesScreen(context, navController, mainViewModel)
             }
 

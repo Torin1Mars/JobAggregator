@@ -5,6 +5,7 @@ import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,12 +17,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,13 +38,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.aiModule.ChatGptViewModel
 import com.example.jobaggregator.ui.AiFilterUi
 import com.example.jobaggregator.ui.Screens
+import com.example.jobaggregator.ui.screens.BottomSwipingFieldScreen
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
 import com.example.jobaggregator.ui.theme.BorderGray
@@ -58,6 +62,8 @@ fun MainScreen (context: Context,  navHostController: NavHostController, mainVm:
         topBar = {},
         content = {MainScreenMainContent(context, navHostController, mainVm, gptViewModel)},
         bottomBar = {})
+
+    BottomSwipingFieldScreen()
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -89,6 +95,7 @@ fun MainScreenMainContent(context: Context,
         cityQuery = ""
     }
 
+    BottomSwipeExample()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -314,5 +321,39 @@ private fun openFoundedVacanciesScreen(context: Context, navHostController: NavH
         navHostController.navigate(Screens.AllVacanciesListScreen.route)
     }else {
         Toast.makeText(context, "Don't have loaded vacancies yet !", Toast.LENGTH_SHORT)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BottomSwipeExample() {
+    val sheetState = rememberModalBottomSheetState()
+    var isSheetOpen by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Button(onClick = { isSheetOpen = true }) {
+            Text("Open Bottom Sheet")
+        }
+
+        if (isSheetOpen) {
+            ModalBottomSheet(
+                onDismissRequest = { isSheetOpen = false },
+                sheetState = sheetState
+            ) {
+                // Content of your swiping field/sheet
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Hello from the bottom!")
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Button(onClick = { isSheetOpen = false }) {
+                        Text("Close")
+                    }
+                }
+            }
+        }
     }
 }
