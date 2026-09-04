@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.ripple
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -41,7 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.data.DatabaseJobCard
@@ -69,17 +70,20 @@ fun AllVacanciesScreen(context : Context, navHostController : NavHostController,
 
 @Composable
 private fun TopBar(){
-    Text(
-        text = "Job Search",
-        style = MaterialTheme.typography.bodyLarge,
-        color = TextPrimary,
-        fontWeight = FontWeight.SemiBold
-    )
+    Row(modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalArrangement = Arrangement.Center) {
+        Text(
+            text = "Founded Vacancies",
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
 }
 
 @Composable
 private fun MainContent(vacanciesList: List<DatabaseJobCard>) {
-    LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 20.dp).padding(horizontal = 10.dp))
+    LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 50.dp).padding(horizontal = 10.dp))
     {
         items(count = vacanciesList.size, key = {vacanciesList[it].idInDb}){vacancyItem->
             UiVacancyCard(vacanciesList[vacancyItem].jobCard, BorderGray)
@@ -99,7 +103,7 @@ public fun UiVacancyCard(currentVacancyCard: JobCard, borderColor: Color) {
     val vacancyURl = vacancyCard.jobUrl
     val currentContext = LocalContext.current
 
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(15.dp))
 
     Column(
         modifier = Modifier
@@ -111,7 +115,7 @@ public fun UiVacancyCard(currentVacancyCard: JobCard, borderColor: Color) {
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(bounded = true))
             {openVacancyCard(currentContext, vacancyURl)}
-            .padding(16.dp)
+            .padding(15.dp)
     ) {
         Row() {
             Text(
@@ -141,7 +145,7 @@ public fun UiVacancyCard(currentVacancyCard: JobCard, borderColor: Color) {
             )
         }
 
-        Row {
+        Row(horizontalArrangement = Arrangement.SpaceBetween) {
             vacancyCard.jobLocation?.let { it ->
                 Text(
                     text = "Location: $it",
@@ -149,8 +153,6 @@ public fun UiVacancyCard(currentVacancyCard: JobCard, borderColor: Color) {
                     color = TextSecondary
                 )
             }
-
-            Spacer(Modifier.weight(1f))
 
             vacancyCard.jobSalary?.let { it ->
                 Spacer(Modifier.width(10.dp))

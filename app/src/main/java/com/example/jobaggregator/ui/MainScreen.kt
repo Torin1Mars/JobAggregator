@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,24 +30,31 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.text.isDigitsOnly
 import androidx.navigation.NavHostController
 import com.example.jobaggregator.Parsers.UserQueryManager
 import com.example.jobaggregator.ViewModels.MainViewModel
 import com.example.jobaggregator.aiModule.ChatGptViewModel
+import com.example.jobaggregator.aiModule.gptKey
+import com.example.jobaggregator.aiModule.gptModelTitle
+import com.example.jobaggregator.aiModule.vacanciesForFilterCount
 import com.example.jobaggregator.ui.AiFilterUi
 import com.example.jobaggregator.ui.Screens
-import com.example.jobaggregator.ui.screens.BottomSwipingFieldScreen
 import com.example.jobaggregator.ui.theme.AccentGreen
 import com.example.jobaggregator.ui.theme.BackgroundBlack
 import com.example.jobaggregator.ui.theme.BorderGray
@@ -54,6 +64,8 @@ import com.example.jobaggregator.ui.theme.SurfaceDarkElevated
 import com.example.jobaggregator.ui.theme.TextPrimary
 import com.example.jobaggregator.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.nio.file.WatchEvent
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -63,7 +75,7 @@ fun MainScreen (context: Context,  navHostController: NavHostController, mainVm:
         content = {MainScreenMainContent(context, navHostController, mainVm, gptViewModel)},
         bottomBar = {})
 
-    BottomSwipingFieldScreen()
+    BottomSwipeScreen(context)
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -95,7 +107,6 @@ fun MainScreenMainContent(context: Context,
         cityQuery = ""
     }
 
-    BottomSwipeExample()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -103,7 +114,7 @@ fun MainScreenMainContent(context: Context,
     ) {
         Spacer(Modifier.height(25.dp))
 
-        Text(
+        Text(modifier = Modifier.align (Alignment.CenterHorizontally),
             text = "Job Search",
             style = MaterialTheme.typography.bodyLarge,
             color = TextPrimary,
@@ -138,7 +149,7 @@ fun MainScreenMainContent(context: Context,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
-                onClick = { checkVacancies("", "", mainVM) },
+                onClick = { checkVacancies(cityQuery, vacancyQuery, mainVM) },
                 enabled = !parsersLoadingStatus && vacancyQuery.isNotBlank() || !parsersLoadingStatus && cityQuery.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -309,11 +320,10 @@ private fun UserTextField(
 @RequiresApi(Build.VERSION_CODES.Q)
 fun checkVacancies(vacancyCityQuery: String, vacancyTitleQuery: String, mainVm: MainViewModel){
     val manager = UserQueryManager()
-    val convertedQuery = manager.convertUserQueryInput("сміла")
+    val convertedQuery = manager.convertUserQueryInput(vacancyCityQuery,vacancyTitleQuery)
 
     mainVm.runCheckVacanciesCount(workUaQuery = convertedQuery[0])
 }
-
 
 @RequiresApi(Build.VERSION_CODES.O)
 private fun openFoundedVacanciesScreen(context: Context, navHostController: NavHostController, dbCount: Int){
@@ -326,33 +336,110 @@ private fun openFoundedVacanciesScreen(context: Context, navHostController: NavH
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BottomSwipeExample() {
-    val sheetState = rememberModalBottomSheetState()
-    var isSheetOpen by remember { mutableStateOf(false) }
+fun BottomSwipeScreen(context: Context){
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var showSheet by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Button(onClick = { isSheetOpen = true }) {
-            Text("Open Bottom Sheet")
-        }
+    val bottomScreenHeightZone = LocalConfiguration.current.screenHeightDp.dp * 0.5f
+    val bottomScreenHeightDetectionPosition = LocalConfiguration.current.screenHeightDp.dp
 
-        if (isSheetOpen) {
-            ModalBottomSheet(
-                onDismissRequest = { isSheetOpen = false },
-                sheetState = sheetState
-            ) {
-                // Content of your swiping field/sheet
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("Hello from the bottom!")
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Button(onClick = { isSheetOpen = false }) {
-                        Text("Close")
+    val gptKeyInput = remember { mutableStateOf<String>("") }
+    val gptModel = remember { mutableStateOf<String>("") }
+    val vacanciesToFilterCount = remember { mutableStateOf<Int>(0) }
+
+    LaunchedEffect(Unit) {
+        gptKeyInput.value = gptKey
+        gptModel.value = gptModelTitle
+        vacanciesToFilterCount.value = vacanciesForFilterCount
+    }
+
+    fun setNewSettings(){
+        gptKey = gptKeyInput.value
+        gptModelTitle = gptModel.value
+        vacanciesForFilterCount = vacanciesToFilterCount.value
+
+        Toast.makeText(context, "New settings have been successfully applied!", Toast.LENGTH_SHORT).show()
+    }
+
+    //Gestures detection zone
+    Box(modifier = Modifier.fillMaxSize().padding(top = bottomScreenHeightDetectionPosition)
+            .pointerInput(Unit) {
+                detectDragGestures { _, dragAmount ->
+                    //Detect swipe negative Y movement
+                    if (dragAmount.y < -20f && !showSheet) {
+                        showSheet = true
+                        scope.launch { sheetState.show() }
                     }
                 }
+            }
+    ) {}
+
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = {showSheet = false},
+            sheetState = sheetState,
+            dragHandle = null
+        ) {
+            Column(modifier = Modifier.height(bottomScreenHeightZone).padding(15.dp)) {
+
+                Text(
+                    "Local settings:",
+                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(Modifier.heightIn(15.dp))
+
+                UserTextField(
+                    initialValue = gptKeyInput.value,
+                    onValueChange = { newText -> gptKeyInput.value = newText },
+                    label = "Valid GPT key:",
+                    placeholder = "",
+                    enabled = true
+                )
+
+                Spacer(Modifier.heightIn(15.dp))
+
+                UserTextField(
+                    initialValue = gptModel.value,
+                    onValueChange = { newText -> gptModel.value = newText },
+                    label = "GPT model title:",
+                    placeholder = "",
+                    enabled = true
+                )
+
+                Spacer(Modifier.heightIn(15.dp))
+
+                UserTextField(
+                    initialValue = vacanciesToFilterCount.value.toString(),
+                    onValueChange = { newText -> if (newText.isDigitsOnly()){vacanciesToFilterCount.value = newText.toInt()} },
+                    label = "Numbers vacancies to filter:",
+                    placeholder = "",
+                    enabled = true
+                )
+
+                Button(
+                    onClick = {setNewSettings()},
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Blue,
+                        contentColor = BackgroundBlack,
+                        disabledContainerColor = SurfaceDarkElevated,
+                        disabledContentColor = TextSecondary
+                    )
+                ) {
+                    Text(
+                        "Apply",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
             }
         }
     }

@@ -1,0 +1,99 @@
+[33m2e2c071[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Setting up bottom sliding screen bechaviour
+[33m28b9ddc[m Setting up butomm sliding screen bechaviour
+[33m2c4973a[m[33m ([m[1;31morigin/main[m[33m)[m Setting up propper ai answer screen
+[33mbe14447[m Setting up ai screen bechaviour
+[33m102f2d0[m Setting up AI answer screen bechaviour
+[33m2cb7650[m Setting up Ai answer bechaviour
+[33ma8ba7aa[m Setting up Ai answer bechawior. Starting to implement Ai respond screen
+[33md5a5b8b[m Setting up Ai module bechaviour
+[33me9f3332[m Setting up ai module logic
+[33mb2a6be7[m Setting up new functionality
+[33m9f9fec6[m Setting up all vacancies screen bechaviour
+[33mb7e6186[m Setting up main screen bechaviour
+[33m27578b1[m Setting up main screen bechaviour
+[33m15bbbce[m Setting up main screen UI
+[33m095f51a[m Adding aditional screens, implementing navigation logic
+[33m1c5a915[m Implementing main screen logic
+[33m6074f8c[m Setting up main screen
+[33mb096485[m Setting up main screen bechviour
+[33m64d59c3[m Setting up main screen bechaviour, implementing some refactoring
+[33md00e13c[m Setting up main app screen
+[33mfe2919d[m Setting up main screen bechaviour
+[33m66f2064[m Implementing main screen design
+[33m581c0f7[m Adding job agregatour screen
+[33m4cc675a[m Setting up rabota ua parser logic
+[33m9c566cb[m Implementing some changes with rabota ua parser logic
+[33m246d492[m Setting up new rabota ua parsing logic
+[33mafae435[m Implementing some new logic
+[33me801387[m Setting up main screen functions, implementing some refactoring
+[33m033ef09[m Setting up main view model logic
+[33maf863bf[m Preaparing some refactoring, setting up common screen for bought parsers
+[33me735480[m Setting up vacancies count behaviour
+[33mfb519bd[m Setting up work ua respond vacancies coint checking
+[33mc1efe95[m Implementing checking pages count Logic
+[33md3f2c49[m Setting up user querry manager logic
+[33maf79459[m Implementing small refactoring, working on querry manager logic
+[33m45a9038[m Starting to implement user input validator
+[33m172c7b9[m Implementing some project refactoring, setting up propper hilt providers
+[33mf093c83[m Continuing implementing new Rabota ua parsing multiple pages logic
+[33m747a975[m Setting up rabota ua multiple pages parsing logic
+[33m61dc3b6[m Implementing several pages parsing logic
+[33m35e80c9[m Implementing parsing several pages logic
+[33m423ea16[m Setting up rabota ua multiple pages parsing logic
+[33m8ced019[m Setting up rabota ua multiple pages parsing logic
+[33ma9344d1[m Setting up new rabota ua parsing logic
+[33m3ed7f84[m Implementing new parsing rabota ua logic
+[33m04854d6[m Setting up several pages respond parsing ligic
+[33m1f44061[m Setting up several pages parsing logic
+[33me654508[m Setting up rabota ua multiple pages parsing
+[33m71d2431[m Implementing several pages parsing logic
+[33m058dfac[m Setting up several pages respond parsing logic
+[33mc7efaf8[m Setting up single page parsing logic
+[33m6026704[m Implementing Web View parsing logic
+[33mc3a9dad[m Implementing parsing logic
+[33mb16bfff[m Setting up page parsing
+[33m97b4064[m Continuing to implent View Model Logic in Rabota Ua parser
+[33m2d9e11b[m Implementing driwing Rabota ua parser View model
+[33mb6be5b2[m Implementing Rabota Ua parsing View Model
+[33m664ff7c[m Setting up Rabota ua multiple pages parsing
+[33m3a4e80a[m Setting up Several pages parsing logic
+[33m1c15d08[m Implementing new parsing several pages respond logic
+[33mbcdbc1d[m Starting to implement new parsing ge several pages rabota ua logic
+[33mdb39db0[m Implementing new parsing rabota ua logic
+[33m6a4d9f1[m Begining to seting up new parsing logic in get parsing page function
+[33m2422741[m Setting up RabotaUa several Pages parsing
+[33m96a91db[m Changing logic into parsing by page stage
+[33m5c99207[m Setting up Rabota Ua several pages parsing
+[33m09b8233[m Setting up Rabota ua several page respond parsing
+[33m5d0c793[m Setting up several pages parsing logic
+[33m656c7ff[m Setting up parsing sevaral pages respond
+[33mcd8c9f3[m Setting up rabota ua parsing logic
+[33m35fd84d[m Continuing to setting up Several pages respond parsing
+[33m430a45f[m Implementing parsing vacancies from several pages rabotaUa respond
+[33m8324620[m Setting up Single Vacancy parsiing by RabotaUa Parser
+[33m5788769[m JobCard parsing has been implemented
+[33m000ff93[m Fixing parsing vacancy Card
+[33m8ccce12[m Setting up Rabota Ua parsing Job card
+[33m05bb4d6[m Setting up Rabota Ua parser, collectig all vacancies from respond
+[33m0331421[m Continuing setting up parsing vacancies in single page respond
+[33m1dd1572[m Setting up Rabota Ua parser. Seting Up getting vacancies links from html page respond
+[33m99d2d43[m Setting up Rabota ua parser, setting up pages count renpond
+[33m26ae570[m Setting up Rabota ua parser
+[33m35aee8b[m Setting up rabota ua parser
+[33m3f4d174[m Setting up WebView parser
+[33m3e4d783[m Setting up web view rabotaUa website parser
+[33m4bf7b5c[m Setting up Rabota Ua parser
+[33m56cbc12[m Setting up room lib. Adding new Rabota Ua parser
+[33md31bb6e[m Setting up room local db to project
+[33mc69bd7e[m Setting up room local db to project
+[33mad13f61[m Setting up Hilt lib
+[33ma044c36[m Setting up hilt lib
+[33m0881bbb[m Adding Hilt lib
+[33m7250bd8[m Implementing parsing vacancies from several pages respond
+[33m36b31bc[m Implementing searching in WorkUa several Pages
+[33m23c4db7[m Setting up single vacancy parsing
+[33m327ecaf[m Setting up WorkUa parser
+[33meb7b017[m Adding Retrofit lib
+[33me0f2ca3[m Setting up Ksoup queries to work.ua website
+[33mebad137[m Initial priject commit
+[33m3322f9b[m Initial commit

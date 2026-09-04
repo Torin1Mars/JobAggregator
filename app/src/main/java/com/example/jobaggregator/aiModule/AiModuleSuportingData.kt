@@ -5,7 +5,7 @@ import kotlin.time.Duration.Companion.seconds
 //Gpt settings
 val vacanciesForFilterCount = 5
 val gptAnswerDelay = 20.seconds
-val gptKey = ""
+val gptKey = "aaa"
 val gptModelTitle = "gpt-5.4-mini"
 
 val initialModelInstructions = """

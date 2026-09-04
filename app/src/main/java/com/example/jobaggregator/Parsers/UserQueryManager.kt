@@ -33,13 +33,17 @@ class UserQueryManager() {
             convertedJobTitle = transliterator.transliterate(jobTitle.lowercase())
 
             workUaQuery = String.format(jobFullQueryTemplate, convertedCity, convertedJobTitle)
+
+            return workUaQuery
         }
-        else if(city.isNotEmpty()){
+
+        if(city.isNotEmpty()){
             convertedCity = transliterator.transliterate(city.lowercase())
 
             workUaQuery = String.format(jobShortQueryTemplate, convertedCity)
         }
-        else if(jobTitle.isNotEmpty()){
+
+        if(jobTitle.isNotEmpty()){
 
             convertedJobTitle = transliterator.transliterate(jobTitle.lowercase())
 

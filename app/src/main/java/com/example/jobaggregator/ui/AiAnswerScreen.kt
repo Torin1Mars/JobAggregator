@@ -2,7 +2,9 @@ package com.example.jobaggregator.ui
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,6 +42,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import com.example.jobaggregator.ui.theme.TextPrimary
 
 @Composable
 fun AiAnswerScreen(context: Context, mainViewModel: MainViewModel, gptViewModel: ChatGptViewModel){
@@ -65,25 +68,32 @@ fun AiAnswerScreen(context: Context, mainViewModel: MainViewModel, gptViewModel:
         }
     }
 
-
-    //TODO continuing here :
     Scaffold(containerColor = BackgroundBlack,
-        topBar = {},
+        topBar = {TopBar()},
         content = {MainContent(gptAnswer, chosenVacanciesList)},
         bottomBar = {})
 }
 
 @Composable
+private fun TopBar(){
+    Row(modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        horizontalArrangement = Arrangement.Center) {
+        Text(
+            text = "Ai choice",
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
 private fun MainContent(aiAnswer: VacancyAiAnswer, chosenJobCardsList: List<JobCard>){
 
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 35.dp)
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 50.dp)
         .padding(horizontal = 10.dp)) {
 
         if (aiAnswer.explanation.isNotBlank()){
-            Text(text = "Ai answer:",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White
-            )
             AiExplanation(aiAnswer.explanation)
         }
 
@@ -124,10 +134,14 @@ private fun MatchedVacancies(matchedVacanciesList: List<JobCard>) {
         matchedVacanciesList.forEach { vacancyCard->
             UiVacancyCard(vacancyCard, Color.Blue)
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 15.dp),
-                thickness = 3.dp,
-                color = Color.Blue
-            )
+            val isLast = matchedVacanciesList.indexOf(vacancyCard) == matchedVacanciesList.lastIndex
+
+            if (!isLast){
+                HorizontalDivider(modifier = Modifier.padding(top = 15.dp),
+                    thickness = 3.dp,
+                    color = Color.LightGray
+                )
+            }
         }
     }
 }
